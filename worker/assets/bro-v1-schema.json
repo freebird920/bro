@@ -2,60 +2,41 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schema.slat.or.kr/bro/v1/schema.json",
   "title": "Bibliographic Reaction Object (BRO)",
-  "description": "Bibliographic Reaction Object (BRO)의 원시스키마 BroItemList, BroArticle, BroAbstract. 본 스키마는 시스템 쓰기(Write/Command) 전용 모델이며, 클라이언트 조회를 위한 내포(Embedding) 트리 변환은 미들웨어 계층의 책임으로 위임함.",
-  "$comment": "[ARCHITECTURE CORE DIRECTIVE] 본 원시 스키마는 애그리거트 루트(Aggregate Root) 간의 객체 내포(Embedding)를 엄격히 금지하고 단방향 URN 식별자(@id) 참조만을 허용한다. 이는 분산 DB 환경에서 트랜잭션 락 경합과 다중 판본 업데이트 이상을 방어하기 위한 CQRS 쓰기 파이프라인의 물리적 제약이다. 프론트엔드 렌더링 최적화를 위한 JSON 내포 구조(View Model)가 필요할 경우, 본 원시 스키마를 수정하지 말고 도메인 계층에서 In-Memory Join을 수행하여 도메인 특화 응답 DTO를 합성할 것.",
+  "description": "Bibliographic Reaction Object (BRO)의 원시스키마 BroItemList, BroArticle, BroAbstract. 본 스키마는 시스템 쓰기(Write/Command) 전용 모델이며, 클라이언트 조회를 위한 내포(Embedding) 트리 변환은 미들웨어 계층의 책임으로 위임함.\n[ARCHITECTURE CORE DIRECTIVE] 본 원시 스키마는 애그리거트 루트(Aggregate Root) 간의 객체 내포(Embedding)를 엄격히 금지하고 단방향 URN 식별자(@id) 참조만을 허용한다. 이는 분산 DB 환경에서 트랜잭션 락 경합과 다중 판본 업데이트 이상을 방어하기 위한 CQRS 쓰기 파이프라인의 물리적 제약이다. 프론트엔드 렌더링 최적화를 위한 JSON 내포 구조(View Model)가 필요할 경우, 본 원시 스키마를 수정하지 말고 도메인 계층에서 In-Memory Join을 수행하여 도메인 특화 응답 DTO를 합성할 것.",
   "type": "object",
   "oneOf": [
-    {
-      "$ref": "#/$defs/BroItemList"
-    },
-    {
-      "$ref": "#/$defs/BroArticle"
-    },
-    {
-      "$ref": "#/$defs/BroAbstract"
-    }
+    { "$ref": "#/$defs/BroItemList" },
+    { "$ref": "#/$defs/BroArticle" },
+    { "$ref": "#/$defs/BroAbstract" }
   ],
   "$defs": {
     "BroItemList": {
       "type": "object",
       "description": "다중 타겟 문서 큐레이션을 위한 영속적 컨테이너 엔티티 (ItemList).",
-      "required": ["@context", "@type", "author", "itemListElement"],
+      "required": ["@context", "@type", "creator", "itemListElement"],
       "properties": {
-        "@context": {
-          "const": "https://schema.org"
-        },
-        "@type": {
-          "const": "ItemList"
-        },
-        "@id": {
-          "$ref": "#/$defs/urnUuidOnly"
-        },
+        "@context": { "const": "https://schema.org" },
+        "@type": { "const": "ItemList" },
+        "@id": { "$ref": "#/$defs/urnUuidOnly" },
         "name": {
           "type": "string",
           "minLength": 2,
           "maxLength": 2000
         },
-        "author": {
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/authorRoot"
-          }
+          "items": { "$ref": "#/$defs/creatorRoot" }
         },
         "itemListElement": {
           "type": "array",
-          "minItems": 0,
-          "description": "리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 페이로드 생성 시 반드시 @id 객체 배열만을 전송해야 하며, 문서 객체 전체를 배열 내부에 내포(Embed)하는 페이로드는 검증(Validation) 단계에서 거부(Reject)된다.",
-          "$comment": "[ANTI-PATTERN PREVENTION] itemListElement 내부의 oneOf를 통한 Article 객체 직접 포함 허용 로직은 데이터 단편화 방지 및 식별자 정규화를 위해 영구 삭제됨. 모든 하위 엔티티 결합은 오직 @id 포인터로만 이루어져야 함.",
+          "description": "리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 페이로드 생성 시 반드시 @id 객체 배열만을 전송해야 하며, 문서 객체 전체를 배열 내부에 내포(Embed)하는 페이로드는 검증(Validation) 단계에서 거부(Reject)된다.\n[ANTI-PATTERN PREVENTION] itemListElement 내부의 oneOf를 통한 Article 객체 직접 포함 허용 로직은 데이터 단편화 방지 및 식별자 정규화를 위해 영구 삭제됨. 모든 하위 엔티티 결합은 오직 @id 포인터로만 이루어져야 함.",
           "items": {
             "type": "object",
             "required": ["@id"],
             "properties": {
-              "@id": {
-                "$ref": "#/$defs/urnUuidOnly"
-              }
+              "@id": { "$ref": "#/$defs/urnUuidOnly" }
             }
           }
         }
@@ -69,58 +50,39 @@
         "@type",
         "about",
         "text",
-        "author",
+        "creator",
         "dateCreated"
       ],
       "properties": {
-        "@context": {
-          "const": "https://schema.org"
-        },
-        "@type": {
-          "const": "Article"
-        },
-        "@id": {
-          "$ref": "#/$defs/urnUuidOnly"
-        },
-        "dateCreated": {
-          "$ref": "#/$defs/strictDateTime"
-        },
-        "datePublished": {
-          "$ref": "#/$defs/strictDateTime"
-        },
+        "@context": { "const": "https://schema.org" },
+        "@type": { "const": "Article" },
+        "@id": { "$ref": "#/$defs/urnUuidOnly" },
+        "dateCreated": { "$ref": "#/$defs/strictDateTime" },
+        "datePublished": { "$ref": "#/$defs/strictDateTime" },
         "about": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "description": "파생 문서가 타겟팅하는 코어 저작물 엔티티. 다중 판본 바인딩 시 복수의 원소를 허용하나, 각 요소는 단일 URN을 소유함.",
-          "items": {
-            "$ref": "#/$defs/terminalIdentifier"
-          }
+          "items": { "$ref": "#/$defs/terminalIdentifier" }
         },
-        "text": {
-          "$ref": "#/$defs/boundedText"
-        },
+        "text": { "$ref": "#/$defs/boundedText" },
         "abstract": {
           "type": "array",
-          "description": "현재 문서(Article)에 종속된 파생 요약본의 식별자(URN) 배열. 요약본의 상세 텍스트(Text)는 포함하지 않는다.",
-          "$comment": "[DATA REDUNDANCY LOCK] Article 페이로드 내에 Abstract 본문 내포를 허용할 경우 발생하는 1:N 구조의 디스크 중복 적재(Redundancy) 및 B-Tree 분할을 막기 위해 철저히 식별자 참조 체계로 고립시킴.",
+          "description": "현재 문서(Article)에 종속된 파생 요약본의 식별자(URN) 배열. 요약본의 상세 텍스트(Text)는 포함하지 않는다.\n[DATA REDUNDANCY LOCK] Article 페이로드 내에 Abstract 본문 내포를 허용할 경우 발생하는 1:N 구조의 디스크 중복 적재(Redundancy) 및 B-Tree 분할을 막기 위해 철저히 식별자 참조 체계로 고립시킴.",
           "items": {
             "type": "object",
             "required": ["@id"],
             "properties": {
-              "@id": {
-                "$ref": "#/$defs/urnUuidOnly"
-              }
+              "@id": { "$ref": "#/$defs/urnUuidOnly" }
             }
           }
         },
-        "author": {
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/authorRoot"
-          }
+          "items": { "$ref": "#/$defs/creatorRoot" }
         }
       }
     },
@@ -131,76 +93,43 @@
         "@context",
         "@type",
         "text",
-        "author",
+        "creator",
         "dateCreated",
         "isBasedOn"
       ],
       "properties": {
-        "@context": {
-          "const": "https://schema.org"
-        },
-        "@type": {
-          "const": "CreativeWork"
-        },
-        "@id": {
-          "$ref": "#/$defs/urnUuidOnly"
-        },
-        "dateCreated": {
-          "$ref": "#/$defs/strictDateTime"
-        },
-        "datePublished": {
-          "$ref": "#/$defs/strictDateTime"
-        },
-        "text": {
-          "$ref": "#/$defs/boundedText"
-        },
-        "inLanguage": {
-          "type": "string",
-          "description": "요약본의 언어 코드 (예: ko, en)"
-        },
-        "author": {
+        "@context": { "const": "https://schema.org" },
+        "@type": { "const": "CreativeWork" },
+        "@id": { "$ref": "#/$defs/urnUuidOnly" },
+        "dateCreated": { "$ref": "#/$defs/strictDateTime" },
+        "datePublished": { "$ref": "#/$defs/strictDateTime" },
+        "text": { "$ref": "#/$defs/boundedText" },
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/authorRoot"
-          }
+          "items": { "$ref": "#/$defs/creatorRoot" }
         },
         "isBasedOn": {
           "type": "array",
           "minItems": 1,
           "description": "이 요약이 기반하고 있는 원본 엔티티(Article 또는 도서 등 CreativeWork)의 식별자",
-          "items": {
-            "$ref": "#/$defs/terminalIdentifier"
-          }
+          "items": { "$ref": "#/$defs/terminalIdentifier" }
         }
       }
     },
-    "BASE_PRIMITIVES": {
-      "$comment": " 1. 원시 데이터 계층 (Base Primitives): 식별자, 날짜 통제"
-    },
     "urnIdentifier": {
       "type": "string",
-      "description": "식별자 검증. 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 패턴을 단순화함.",
+      "description": "[BASE_PRIMITIVES: 1. 원시 데이터 계층 - 식별자, 날짜 통제] 식별자 검증. 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 패턴을 단순화함.",
       "oneOf": [
-        {
-          "pattern": "^urn:isbn:(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$"
-        },
-        {
-          "pattern": "^urn:doi:10\\.\\d{4,9}\\/[-._;()/:A-Za-z0-9]+$"
-        },
-        {
-          "pattern": "^urn:uci:[a-zA-Z0-9]{3,10}[:\\-+][a-zA-Z0-9\\-+.:]+$"
-        },
-        {
-          "pattern": "^urn:kolis:[a-zA-Z0-9]+$"
-        },
+        { "pattern": "^urn:isbn:(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$" },
+        { "pattern": "^urn:doi:10\\.\\d{4,9}\\/[-._;()/:A-Za-z0-9]+$" },
+        { "pattern": "^urn:uci:[a-zA-Z0-9]{3,10}[:\\-+][a-zA-Z0-9\\-+.:]+$" },
+        { "pattern": "^urn:kolis:[a-zA-Z0-9]+$" },
         {
           "pattern": "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
         },
-        {
-          "pattern": "^urn:nlk:[a-zA-Z0-9]+$"
-        }
+        { "pattern": "^urn:nlk:[a-zA-Z0-9]+$" }
       ]
     },
     "urnUuidOnly": {
@@ -208,8 +137,26 @@
       "pattern": "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
       "description": "UUID v4(랜덤) 및 v7(타임스탬프) v5(네임스페이스 기반 SHA-1 해시)"
     },
+    "urnOrcid": {
+      "type": "string",
+      "pattern": "^urn:orcid:\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
+    },
+    "urnIsni": {
+      "type": "string",
+      "pattern": "^urn:isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X]$"
+    },
+    "urnLei": { "type": "string", "pattern": "^urn:lei:[0-9A-Z]{20}$" },
+    "urnGovcode": { "type": "string", "pattern": "^urn:kr:govcode:\\d{7}$" },
+    "urnCrn": { "type": "string", "pattern": "^urn:kr:crn:\\d{13}$" },
+    "urnBrn": { "type": "string", "pattern": "^urn:kr:brn:\\d{10}$" },
+    "urnNpo": { "type": "string", "pattern": "^urn:kr:npo:\\d{10}$" },
+    "urnModel": {
+      "type": "string",
+      "pattern": "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$"
+    },
     "strictDateTime": {
       "type": "string",
+      "format": "date-time",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
       "description": "RFC 3339 기반 날짜 포맷 검증. Z 또는 오프셋(+09:00)을 강제하여 타임존 누락으로 인한 DB 데이터 오염 방지."
     },
@@ -222,14 +169,10 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-          "title": {
-            "type": "string"
-          },
+          "title": { "type": "string" },
           "byline": {
             "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "items": { "type": "string" }
           },
           "language": {
             "type": "array",
@@ -242,21 +185,15 @@
           },
           "keywords": {
             "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "items": { "type": "string" }
           },
           "image": {
             "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "items": { "type": "string" }
           },
           "source_url": {
             "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "items": { "type": "string" }
           },
           "others": {
             "type": "array",
@@ -278,169 +215,117 @@
         "@type": {
           "enum": ["Article", "CreativeWork"]
         },
-        "identifier": {
-          "$ref": "#/$defs/urnIdentifier"
-        }
+        "identifier": { "$ref": "#/$defs/urnIdentifier" }
       },
       "additionalProperties": false
     },
-    "AUTHOR_ENTITIES": {
-      "$comment": " 2. 저자 엔티티 계층: 다형성 속성 출혈(Property Bleeding) 상호 배제."
-    },
-    "authorRoot": {
+    "creatorRoot": {
       "type": "object",
+      "description": "[CREATOR_ENTITIES: 2. 저자 엔티티 계층] 다형성 속성 출혈(Property Bleeding) 상호 배제.",
       "required": ["@type"],
-      "discriminator": {
-        "propertyName": "@type"
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "@type": {
-                "const": "Person"
-              }
-            }
-          },
-          "then": {
-            "$ref": "#/$defs/authorPerson"
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "@type": {
-                "const": "GovernmentOrganization"
-              }
-            }
-          },
-          "then": {
-            "$ref": "#/$defs/authorGovernment"
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "@type": {
-                "const": "Corporation"
-              }
-            }
-          },
-          "then": {
-            "$ref": "#/$defs/authorCorporation"
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "@type": {
-                "const": "Organization"
-              }
-            }
-          },
-          "then": {
-            "$ref": "#/$defs/authorOrganization"
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "@type": {
-                "const": "SoftwareApplication"
-              }
-            }
-          },
-          "then": {
-            "$ref": "#/$defs/authorSoftware"
-          }
-        }
+      "oneOf": [
+        { "$ref": "#/$defs/creatorPerson" },
+        { "$ref": "#/$defs/creatorGovernment" },
+        { "$ref": "#/$defs/creatorCorporation" },
+        { "$ref": "#/$defs/creatorOrganization" },
+        { "$ref": "#/$defs/creatorSoftware" }
       ]
     },
-    "authorPerson": {
+    "creatorPerson": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
-        "@type": {
-          "const": "Person"
-        },
+        "@type": { "const": "Person" },
         "name": {
           "type": "string",
           "maxLength": 1000
         },
         "@id": {
-          "pattern": "^urn:(?:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|orcid:\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]|isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X])$"
+          "oneOf": [
+            { "$ref": "#/$defs/urnUuidOnly" },
+            { "$ref": "#/$defs/urnOrcid" },
+            { "$ref": "#/$defs/urnIsni" }
+          ]
         }
       },
       "additionalProperties": false
     },
-    "authorGovernment": {
+    "creatorGovernment": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
-        "@type": {
-          "const": "GovernmentOrganization"
-        },
+        "@type": { "const": "GovernmentOrganization" },
         "name": {
           "type": "string",
           "maxLength": 1000
         },
         "@id": {
-          "pattern": "^urn:(?:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|kr:govcode:\\d{7}|lei:[0-9A-Z]{20}|isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X])$"
+          "oneOf": [
+            { "$ref": "#/$defs/urnUuidOnly" },
+            { "$ref": "#/$defs/urnGovcode" },
+            { "$ref": "#/$defs/urnLei" },
+            { "$ref": "#/$defs/urnIsni" }
+          ]
         }
       },
       "additionalProperties": false
     },
-    "authorCorporation": {
+    "creatorCorporation": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
-        "@type": {
-          "const": "Corporation"
-        },
+        "@type": { "const": "Corporation" },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 1000
         },
         "@id": {
-          "pattern": "^urn:(?:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|kr:(?:crn:\\d{13}|brn:\\d{10})|lei:[0-9A-Z]{20}|isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X])$"
+          "oneOf": [
+            { "$ref": "#/$defs/urnUuidOnly" },
+            { "$ref": "#/$defs/urnCrn" },
+            { "$ref": "#/$defs/urnBrn" },
+            { "$ref": "#/$defs/urnLei" },
+            { "$ref": "#/$defs/urnIsni" }
+          ]
         }
       },
       "additionalProperties": false
     },
-    "authorOrganization": {
+    "creatorOrganization": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
-        "@type": {
-          "const": "Organization"
-        },
+        "@type": { "const": "Organization" },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 1000
         },
         "@id": {
-          "pattern": "^urn:(?:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|kr:npo:\\d{10}|lei:[0-9A-Z]{20}|isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X])$"
+          "oneOf": [
+            { "$ref": "#/$defs/urnUuidOnly" },
+            { "$ref": "#/$defs/urnNpo" },
+            { "$ref": "#/$defs/urnLei" },
+            { "$ref": "#/$defs/urnIsni" }
+          ]
         }
       },
       "additionalProperties": false
     },
-    "authorSoftware": {
+    "creatorSoftware": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
-        "@type": {
-          "const": "SoftwareApplication"
-        },
+        "@type": { "const": "SoftwareApplication" },
         "name": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 1000
         },
         "softwareVersion": {
           "type": "string",
           "maxLength": 50
         },
         "@id": {
-          "pattern": "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$"
+          "oneOf": [{ "$ref": "#/$defs/urnModel" }]
         }
       },
       "additionalProperties": false

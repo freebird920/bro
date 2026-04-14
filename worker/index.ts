@@ -50,11 +50,8 @@ function performFrontmatterValidation(payload: any): { location: string; error: 
   if (type === "Article") {
     validateText(payload.text, "/text");
   } else if (type === "CreativeWork" && payload.isBasedOn) {
-    // BroAbstract — text는 순수 텍스트이므로 frontmatter 2차 검증 스킵 가능
-    // 단, text에 frontmatter가 있다면 검증 수행
-    if (typeof payload.text === "string" && payload.text.startsWith("---\n")) {
-      validateText(payload.text, "/text");
-    }
+    // BroAbstract — Article과 동일한 YAML Frontmatter 2차 검증 적용
+    validateText(payload.text, "/text");
   }
   // [SCHEMA v1 개정] ItemList의 itemListElement는 @id 참조만 허용.
   // text 필드가 존재하지 않으므로 Frontmatter 2차 검증 불필요.

@@ -57,12 +57,12 @@ export { normalizePayload, normalizeUrnScheme } from '../lib/normalize';
 
 // Export manual discriminated union types
 export type {
-  Author,
-  AuthorType,
-  AuthorPerson,
-  AuthorGovernment,
-  AuthorCorporation,
-  AuthorOrganization,
-  AuthorSoftware,
+  Creator,
+  CreatorType,
+  CreatorPerson,
+  CreatorGovernment,
+  CreatorCorporation,
+  CreatorOrganization,
+  CreatorSoftware,
 } from '../lib/bro-types';
-export { AUTHOR_TYPES } from '../lib/bro-types';
+export { CREATOR_TYPES } from '../lib/bro-types';

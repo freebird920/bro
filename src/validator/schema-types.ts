@@ -10,23 +10,30 @@
 
 /**
  * Bibliographic Reaction Object (BRO)의 원시스키마 BroItemList, BroArticle, BroAbstract. 본 스키마는 시스템 쓰기(Write/Command) 전용 모델이며, 클라이언트 조회를 위한 내포(Embedding) 트리 변환은 미들웨어 계층의 책임으로 위임함.
+ * [ARCHITECTURE CORE DIRECTIVE] 본 원시 스키마는 애그리거트 루트(Aggregate Root) 간의 객체 내포(Embedding)를 엄격히 금지하고 단방향 URN 식별자(@id) 참조만을 허용한다. 이는 분산 DB 환경에서 트랜잭션 락 경합과 다중 판본 업데이트 이상을 방어하기 위한 CQRS 쓰기 파이프라인의 물리적 제약이다. 프론트엔드 렌더링 최적화를 위한 JSON 내포 구조(View Model)가 필요할 경우, 본 원시 스키마를 수정하지 말고 도메인 계층에서 In-Memory Join을 수행하여 도메인 특화 응답 DTO를 합성할 것.
  */
 export type BibliographicReactionObjectBRO = BroItemList | BroArticle | BroAbstract;
 /**
  * UUID v4(랜덤) 및 v7(타임스탬프) v5(네임스페이스 기반 SHA-1 해시)
  */
 export type UrnUuidOnly = string;
-export type AuthorRoot = {
-  [k: string]: unknown;
-} & {
-  [k: string]: unknown;
-} & {
-  [k: string]: unknown;
-} & {
-  [k: string]: unknown;
-} & {
-  [k: string]: unknown;
-};
+/**
+ * [CREATOR_ENTITIES: 2. 저자 엔티티 계층] 다형성 속성 출혈(Property Bleeding) 상호 배제.
+ */
+export type CreatorRoot =
+  | CreatorPerson
+  | CreatorGovernment
+  | CreatorCorporation
+  | CreatorOrganization
+  | CreatorSoftware;
+export type UrnOrcid = string;
+export type UrnIsni = string;
+export type UrnGovcode = string;
+export type UrnLei = string;
+export type UrnCrn = string;
+export type UrnBrn = string;
+export type UrnNpo = string;
+export type UrnModel = string;
 /**
  * RFC 3339 기반 날짜 포맷 검증. Z 또는 오프셋(+09:00)을 강제하여 타임존 누락으로 인한 DB 데이터 오염 방지.
  */
@@ -67,17 +74,42 @@ export interface BroItemList {
   /**
    * @minItems 1
    */
-  author: [AuthorRoot, ...AuthorRoot[]];
+  creator: [CreatorRoot, ...CreatorRoot[]];
   /**
    * 리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 페이로드 생성 시 반드시 @id 객체 배열만을 전송해야 하며, 문서 객체 전체를 배열 내부에 내포(Embed)하는 페이로드는 검증(Validation) 단계에서 거부(Reject)된다.
-   *
-   * @minItems 0
+   * [ANTI-PATTERN PREVENTION] itemListElement 내부의 oneOf를 통한 Article 객체 직접 포함 허용 로직은 데이터 단편화 방지 및 식별자 정규화를 위해 영구 삭제됨. 모든 하위 엔티티 결합은 오직 @id 포인터로만 이루어져야 함.
    */
   itemListElement: {
     "@id": UrnUuidOnly;
     [k: string]: unknown;
   }[];
   [k: string]: unknown;
+}
+export interface CreatorPerson {
+  "@type": "Person";
+  name: string;
+  "@id": UrnUuidOnly | UrnOrcid | UrnIsni;
+}
+export interface CreatorGovernment {
+  "@type": "GovernmentOrganization";
+  name: string;
+  "@id": UrnUuidOnly | UrnGovcode | UrnLei | UrnIsni;
+}
+export interface CreatorCorporation {
+  "@type": "Corporation";
+  name: string;
+  "@id": UrnUuidOnly | UrnCrn | UrnBrn | UrnLei | UrnIsni;
+}
+export interface CreatorOrganization {
+  "@type": "Organization";
+  name: string;
+  "@id": UrnUuidOnly | UrnNpo | UrnLei | UrnIsni;
+}
+export interface CreatorSoftware {
+  "@type": "SoftwareApplication";
+  name: string;
+  softwareVersion?: string;
+  "@id": UrnModel;
 }
 /**
  * 단일 코어 문서(Article) 처리를 위한 쓰기/영속성 스키마. 파생 문서(Abstract 등)와의 결합은 외부 참조(@id)로만 이뤄진다.
@@ -97,6 +129,7 @@ export interface BroArticle {
   text: BoundedText;
   /**
    * 현재 문서(Article)에 종속된 파생 요약본의 식별자(URN) 배열. 요약본의 상세 텍스트(Text)는 포함하지 않는다.
+   * [DATA REDUNDANCY LOCK] Article 페이로드 내에 Abstract 본문 내포를 허용할 경우 발생하는 1:N 구조의 디스크 중복 적재(Redundancy) 및 B-Tree 분할을 막기 위해 철저히 식별자 참조 체계로 고립시킴.
    */
   abstract?: {
     "@id": UrnUuidOnly;
@@ -105,7 +138,7 @@ export interface BroArticle {
   /**
    * @minItems 1
    */
-  author: [AuthorRoot, ...AuthorRoot[]];
+  creator: [CreatorRoot, ...CreatorRoot[]];
   [k: string]: unknown;
 }
 /**
@@ -114,7 +147,7 @@ export interface BroArticle {
 export interface TerminalIdentifier {
   "@type": "Article" | "CreativeWork";
   /**
-   * 식별자 검증. 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 패턴을 단순화함.
+   * [BASE_PRIMITIVES: 1. 원시 데이터 계층 - 식별자, 날짜 통제] 식별자 검증. 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 패턴을 단순화함.
    */
   identifier: UrnIdentifier & UrnIdentifier1;
 }
@@ -129,13 +162,9 @@ export interface BroAbstract {
   datePublished?: StrictDateTime;
   text: BoundedText;
   /**
-   * 요약본의 언어 코드 (예: ko, en)
-   */
-  inLanguage?: string;
-  /**
    * @minItems 1
    */
-  author: [AuthorRoot, ...AuthorRoot[]];
+  creator: [CreatorRoot, ...CreatorRoot[]];
   /**
    * 이 요약이 기반하고 있는 원본 엔티티(Article 또는 도서 등 CreativeWork)의 식별자
    *

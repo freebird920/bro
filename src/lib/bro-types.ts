@@ -6,33 +6,33 @@
  * 이 파일의 타입은 bro-v1-schema.json의 $defs와 1:1 동기화되어야 합니다.
  */
 
-// ─── Author Entities (Polymorphic, Mutually Exclusive) ───
+// ─── Creator Entities (Polymorphic, Mutually Exclusive) ───
 
-export interface AuthorPerson {
+export interface CreatorPerson {
   readonly "@type": "Person";
   readonly "@id": string;
   name: string;
 }
 
-export interface AuthorGovernment {
+export interface CreatorGovernment {
   readonly "@type": "GovernmentOrganization";
   readonly "@id": string;
   name: string;
 }
 
-export interface AuthorCorporation {
+export interface CreatorCorporation {
   readonly "@type": "Corporation";
   readonly "@id": string;
   name: string;
 }
 
-export interface AuthorOrganization {
+export interface CreatorOrganization {
   readonly "@type": "Organization";
   readonly "@id": string;
   name: string;
 }
 
-export interface AuthorSoftware {
+export interface CreatorSoftware {
   readonly "@type": "SoftwareApplication";
   readonly "@id": string;
   name: string;
@@ -40,20 +40,20 @@ export interface AuthorSoftware {
 }
 
 /**
- * 5가지 저자 타입의 Discriminated Union.
+ * 5가지 작성자 타입의 Discriminated Union.
  * `@type` 필드를 discriminator로 사용합니다.
  */
-export type Author =
-  | AuthorPerson
-  | AuthorGovernment
-  | AuthorCorporation
-  | AuthorOrganization
-  | AuthorSoftware;
+export type Creator =
+  | CreatorPerson
+  | CreatorGovernment
+  | CreatorCorporation
+  | CreatorOrganization
+  | CreatorSoftware;
 
 /**
- * 지원하는 Author @type 값들
+ * 지원하는 Creator @type 값들
  */
-export const AUTHOR_TYPES = [
+export const CREATOR_TYPES = [
   "Person",
   "GovernmentOrganization",
   "Corporation",
@@ -61,7 +61,7 @@ export const AUTHOR_TYPES = [
   "SoftwareApplication",
 ] as const;
 
-export type AuthorType = (typeof AUTHOR_TYPES)[number];
+export type CreatorType = (typeof CREATOR_TYPES)[number];
 
 // ─── Terminal Identifier ───
 

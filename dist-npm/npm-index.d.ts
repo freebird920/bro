@@ -14,7 +14,7 @@ type BibliographicReactionObjectBRO = BroItemList | BroArticle | BroAbstract;
  * UUID v4(랜덤) 및 v7(타임스탬프) v5(네임스페이스 기반 SHA-1 해시)
  */
 type UrnUuidOnly = string;
-type AuthorRoot = {
+type CreatorRoot = {
     [k: string]: unknown;
 } & {
     [k: string]: unknown;
@@ -58,7 +58,7 @@ interface BroItemList {
     /**
      * @minItems 1
      */
-    author: [AuthorRoot, ...AuthorRoot[]];
+    creator: [CreatorRoot, ...CreatorRoot[]];
     /**
      * 리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 페이로드 생성 시 반드시 @id 객체 배열만을 전송해야 하며, 문서 객체 전체를 배열 내부에 내포(Embed)하는 페이로드는 검증(Validation) 단계에서 거부(Reject)된다.
      *
@@ -96,7 +96,7 @@ interface BroArticle {
     /**
      * @minItems 1
      */
-    author: [AuthorRoot, ...AuthorRoot[]];
+    creator: [CreatorRoot, ...CreatorRoot[]];
     [k: string]: unknown;
 }
 /**
@@ -126,7 +126,7 @@ interface BroAbstract {
     /**
      * @minItems 1
      */
-    author: [AuthorRoot, ...AuthorRoot[]];
+    creator: [CreatorRoot, ...CreatorRoot[]];
     /**
      * 이 요약이 기반하고 있는 원본 엔티티(Article 또는 도서 등 CreativeWork)의 식별자
      *
@@ -160,7 +160,7 @@ var $defs = {
 		required: [
 			"@context",
 			"@type",
-			"author",
+			"creator",
 			"itemListElement"
 		],
 		properties: {
@@ -178,12 +178,12 @@ var $defs = {
 				minLength: 2,
 				maxLength: 2000
 			},
-			author: {
+			creator: {
 				type: "array",
 				minItems: 1,
 				uniqueItems: true,
 				items: {
-					$ref: "#/$defs/authorRoot"
+					$ref: "#/$defs/creatorRoot"
 				}
 			},
 			itemListElement: {
@@ -213,7 +213,7 @@ var $defs = {
 			"@type",
 			"about",
 			"text",
-			"author",
+			"creator",
 			"dateCreated"
 		],
 		properties: {
@@ -260,12 +260,12 @@ var $defs = {
 					}
 				}
 			},
-			author: {
+			creator: {
 				type: "array",
 				minItems: 1,
 				uniqueItems: true,
 				items: {
-					$ref: "#/$defs/authorRoot"
+					$ref: "#/$defs/creatorRoot"
 				}
 			}
 		}
@@ -277,7 +277,7 @@ var $defs = {
 			"@context",
 			"@type",
 			"text",
-			"author",
+			"creator",
 			"dateCreated",
 			"isBasedOn"
 		],
@@ -304,12 +304,12 @@ var $defs = {
 				type: "string",
 				description: "요약본의 언어 코드 (예: ko, en)"
 			},
-			author: {
+			creator: {
 				type: "array",
 				minItems: 1,
 				uniqueItems: true,
 				items: {
-					$ref: "#/$defs/authorRoot"
+					$ref: "#/$defs/creatorRoot"
 				}
 			},
 			isBasedOn: {
@@ -437,10 +437,10 @@ var $defs = {
 		},
 		additionalProperties: false
 	},
-	AUTHOR_ENTITIES: {
+	CREATOR_ENTITIES: {
 		$comment: " 2. 저자 엔티티 계층: 다형성 속성 출혈(Property Bleeding) 상호 배제."
 	},
-	authorRoot: {
+	creatorRoot: {
 		type: "object",
 		required: [
 			"@type"
@@ -458,7 +458,7 @@ var $defs = {
 					}
 				},
 				then: {
-					$ref: "#/$defs/authorPerson"
+					$ref: "#/$defs/creatorPerson"
 				}
 			},
 			{
@@ -470,7 +470,7 @@ var $defs = {
 					}
 				},
 				then: {
-					$ref: "#/$defs/authorGovernment"
+					$ref: "#/$defs/creatorGovernment"
 				}
 			},
 			{
@@ -482,7 +482,7 @@ var $defs = {
 					}
 				},
 				then: {
-					$ref: "#/$defs/authorCorporation"
+					$ref: "#/$defs/creatorCorporation"
 				}
 			},
 			{
@@ -494,7 +494,7 @@ var $defs = {
 					}
 				},
 				then: {
-					$ref: "#/$defs/authorOrganization"
+					$ref: "#/$defs/creatorOrganization"
 				}
 			},
 			{
@@ -506,12 +506,12 @@ var $defs = {
 					}
 				},
 				then: {
-					$ref: "#/$defs/authorSoftware"
+					$ref: "#/$defs/creatorSoftware"
 				}
 			}
 		]
 	},
-	authorPerson: {
+	creatorPerson: {
 		type: "object",
 		required: [
 			"@type",
@@ -532,7 +532,7 @@ var $defs = {
 		},
 		additionalProperties: false
 	},
-	authorGovernment: {
+	creatorGovernment: {
 		type: "object",
 		required: [
 			"@type",
@@ -553,7 +553,7 @@ var $defs = {
 		},
 		additionalProperties: false
 	},
-	authorCorporation: {
+	creatorCorporation: {
 		type: "object",
 		required: [
 			"@type",
@@ -574,7 +574,7 @@ var $defs = {
 		},
 		additionalProperties: false
 	},
-	authorOrganization: {
+	creatorOrganization: {
 		type: "object",
 		required: [
 			"@type",
@@ -595,7 +595,7 @@ var $defs = {
 		},
 		additionalProperties: false
 	},
-	authorSoftware: {
+	creatorSoftware: {
 		type: "object",
 		required: [
 			"@type",
@@ -682,42 +682,42 @@ declare function normalizePayload<T>(payload: T): T;
  * 정확한 Union Type으로 변환하지 못하는 한계를 보완합니다.
  * 이 파일의 타입은 bro-v1-schema.json의 $defs와 1:1 동기화되어야 합니다.
  */
-interface AuthorPerson {
+interface CreatorPerson {
     readonly "@type": "Person";
     readonly "@id": string;
     name: string;
 }
-interface AuthorGovernment {
+interface CreatorGovernment {
     readonly "@type": "GovernmentOrganization";
     readonly "@id": string;
     name: string;
 }
-interface AuthorCorporation {
+interface CreatorCorporation {
     readonly "@type": "Corporation";
     readonly "@id": string;
     name: string;
 }
-interface AuthorOrganization {
+interface CreatorOrganization {
     readonly "@type": "Organization";
     readonly "@id": string;
     name: string;
 }
-interface AuthorSoftware {
+interface CreatorSoftware {
     readonly "@type": "SoftwareApplication";
     readonly "@id": string;
     name: string;
     softwareVersion?: string;
 }
 /**
- * 5가지 저자 타입의 Discriminated Union.
+ * 5가지 작성자 타입의 Discriminated Union.
  * `@type` 필드를 discriminator로 사용합니다.
  */
-type Author = AuthorPerson | AuthorGovernment | AuthorCorporation | AuthorOrganization | AuthorSoftware;
+type Creator = CreatorPerson | CreatorGovernment | CreatorCorporation | CreatorOrganization | CreatorSoftware;
 /**
- * 지원하는 Author @type 값들
+ * 지원하는 Creator @type 값들
  */
-declare const AUTHOR_TYPES: readonly ["Person", "GovernmentOrganization", "Corporation", "Organization", "SoftwareApplication"];
-type AuthorType = (typeof AUTHOR_TYPES)[number];
+declare const CREATOR_TYPES: readonly ["Person", "GovernmentOrganization", "Corporation", "Organization", "SoftwareApplication"];
+type CreatorType = (typeof CREATOR_TYPES)[number];
 
 /**
  * Validates data against the Book Article List Ontology (BRO) schema.
@@ -778,4 +778,4 @@ interface KomarcRecord {
  */
 declare function convertBroToKomarc(broPayload: BibliographicReactionObjectBRO): KomarcRecord | KomarcRecord[];
 
-export { AUTHOR_TYPES, type Author, type AuthorCorporation, type AuthorGovernment, type AuthorOrganization, type AuthorPerson, type AuthorRoot, type AuthorSoftware, type AuthorType, type BibliographicReactionObjectBRO, type BoundedText, type BroAbstract, type BroArticle, type BroItemList, broV1Schema as BroV1Schema, type KomarcControlField, type KomarcDataField, type KomarcRecord, type KomarcSubfield, type StrictDateTime, type TerminalIdentifier, type UrnIdentifier, type UrnIdentifier1, type UrnUuidOnly, broV1Schema, convertBroToKomarc, normalizePayload, normalizeUrnScheme, parseFrontmatter, serializeFrontmatter, validateBroSchema };
+export { type BibliographicReactionObjectBRO, type BoundedText, type BroAbstract, type BroArticle, type BroItemList, broV1Schema as BroV1Schema, CREATOR_TYPES, type Creator, type CreatorCorporation, type CreatorGovernment, type CreatorOrganization, type CreatorPerson, type CreatorRoot, type CreatorSoftware, type CreatorType, type KomarcControlField, type KomarcDataField, type KomarcRecord, type KomarcSubfield, type StrictDateTime, type TerminalIdentifier, type UrnIdentifier, type UrnIdentifier1, type UrnUuidOnly, broV1Schema, convertBroToKomarc, normalizePayload, normalizeUrnScheme, parseFrontmatter, serializeFrontmatter, validateBroSchema };

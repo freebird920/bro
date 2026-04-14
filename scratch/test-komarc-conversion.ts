@@ -11,7 +11,7 @@ const mockPayload: BibliographicReactionObjectBRO = {
     "@type": "CreativeWork",
     "identifier": "urn:isbn:978-89-01-23456-7"
   }] as any,
-  "author": [{
+  "creator": [{
     "@type": "Person",
     "name": "Antigravity Gemini",
     "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000"
@@ -56,7 +56,7 @@ console.log('\nTesting ItemList Conversion (ID-only references)...');
 const listPayload: BibliographicReactionObjectBRO = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "author": [{ "@type": "Organization", "name": "SLAT", "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000" }],
+    "creator": [{ "@type": "Organization", "name": "SLAT", "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000" }],
     "itemListElement": [
       { "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440001" },
       { "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440002" }

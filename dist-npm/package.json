@@ -1,6 +1,6 @@
 {
   "name": "@slat.or.kr/bro-schema",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "BRO:Bibliographic Reaction Object",
   "repository": {
     "type": "git",

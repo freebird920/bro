@@ -57,7 +57,7 @@ console.log('\n📋 Test 3: normalizePayload — 재귀 순회 정규화');
     '@context': 'https://schema.org',
     '@type': 'Article',
     '@id': 'URN:UUID:550e8400-e29b-41d4-a716-446655440001',
-    author: [
+    creator: [
       { '@type': 'Person', '@id': 'URN:ORCID:0000-0002-1234-567X', name: 'Test' }
     ],
     about: [
@@ -68,7 +68,7 @@ console.log('\n📋 Test 3: normalizePayload — 재귀 순회 정규화');
   normalizePayload(payload);
   
   assert(payload['@id'] === 'urn:uuid:550e8400-e29b-41d4-a716-446655440001', 'Root @id normalized');
-  assert(payload.author[0]['@id'] === 'urn:orcid:0000-0002-1234-567X', 'Author @id normalized');
+  assert(payload.creator[0]['@id'] === 'urn:orcid:0000-0002-1234-567X', 'Creator @id normalized');
   assert((payload.about[0] as any).identifier === 'urn:isbn:978-89-01-23456-7', 'about.identifier normalized');
 }
 
@@ -105,7 +105,7 @@ console.log('\n📋 Test 5: 빈 ItemList (itemListElement: []) 검증 통과');
     '@type': 'ItemList',
     '@id': 'urn:uuid:550e8400-e29b-41d4-a716-446655440033',
     name: '비어있는 목록',
-    author: [
+    creator: [
       { '@type': 'Person', '@id': 'urn:uuid:550e8400-e29b-41d4-a716-446655440099', name: '관리자' }
     ],
     itemListElement: []
@@ -116,9 +116,9 @@ console.log('\n📋 Test 5: 빈 ItemList (itemListElement: []) 검증 통과');
 }
 
 // ═══════════════════════════════════════════════
-// Test 6: Author 다형성 — 5가지 @type 검증
+// Test 6: Creator 다형성 — 5가지 @type 검증
 // ═══════════════════════════════════════════════
-console.log('\n📋 Test 6: Author 다형성 — 각 타입별 검증');
+console.log('\n📋 Test 6: Creator 다형성 — 각 타입별 검증');
 {
   const baseArticle = {
     '@context': 'https://schema.org' as const,
@@ -128,7 +128,7 @@ console.log('\n📋 Test 6: Author 다형성 — 각 타입별 검증');
     text: '---\ntitle: "Test"\n---\nBody',
   };
 
-  const authorCases = [
+  const creatorCases = [
     { '@type': 'Person', name: '테스트', '@id': 'urn:uuid:550e8400-e29b-41d4-a716-446655440001' },
     { '@type': 'GovernmentOrganization', name: '정부기관', '@id': 'urn:kr:govcode:1234567' },
     { '@type': 'Corporation', name: '기업', '@id': 'urn:kr:crn:1234567890123' },
@@ -136,10 +136,10 @@ console.log('\n📋 Test 6: Author 다형성 — 각 타입별 검증');
     { '@type': 'SoftwareApplication', name: 'gemini-2.0', '@id': 'urn:model:google:gemini-2.0', softwareVersion: '2.0' },
   ];
 
-  for (const author of authorCases) {
-    const payload = { ...baseArticle, author: [author] };
+  for (const creator of creatorCases) {
+    const payload = { ...baseArticle, creator: [creator] };
     const result = validator.validate(payload);
-    assert(result.valid === true, `Author @type="${author['@type']}" should pass validation`);
+    assert(result.valid === true, `Creator @type="${creator['@type']}" should pass validation`);
   }
 }
 
@@ -155,7 +155,7 @@ console.log('\n📋 Test 7: 정규화 후 대문자 URN → 검증 통과');
     '@id': 'URN:UUID:550e8400-e29b-41d4-a716-446655440001',
     about: [{ '@type': 'CreativeWork', identifier: 'URN:ISBN:978-89-01-23456-7' }],
     text: '---\ntitle: "Test"\n---\nBody',
-    author: [{ '@type': 'Person', name: 'Test', '@id': 'URN:UUID:550e8400-e29b-41d4-a716-446655440002' }]
+    creator: [{ '@type': 'Person', name: 'Test', '@id': 'URN:UUID:550e8400-e29b-41d4-a716-446655440002' }]
   };
 
   // 정규화 전: 실패해야 함

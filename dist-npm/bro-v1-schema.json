@@ -20,7 +20,7 @@
     "BroItemList": {
       "type": "object",
       "description": "다중 타겟 문서 큐레이션을 위한 영속적 컨테이너 엔티티 (ItemList).",
-      "required": ["@context", "@type", "author", "itemListElement"],
+      "required": ["@context", "@type", "creator", "itemListElement"],
       "properties": {
         "@context": {
           "const": "https://schema.org"
@@ -36,12 +36,12 @@
           "minLength": 2,
           "maxLength": 2000
         },
-        "author": {
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/authorRoot"
+            "$ref": "#/$defs/creatorRoot"
           }
         },
         "itemListElement": {
@@ -69,7 +69,7 @@
         "@type",
         "about",
         "text",
-        "author",
+        "creator",
         "dateCreated"
       ],
       "properties": {
@@ -114,12 +114,12 @@
             }
           }
         },
-        "author": {
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/authorRoot"
+            "$ref": "#/$defs/creatorRoot"
           }
         }
       }
@@ -131,7 +131,7 @@
         "@context",
         "@type",
         "text",
-        "author",
+        "creator",
         "dateCreated",
         "isBasedOn"
       ],
@@ -158,12 +158,12 @@
           "type": "string",
           "description": "요약본의 언어 코드 (예: ko, en)"
         },
-        "author": {
+        "creator": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/authorRoot"
+            "$ref": "#/$defs/creatorRoot"
           }
         },
         "isBasedOn": {
@@ -284,10 +284,10 @@
       },
       "additionalProperties": false
     },
-    "AUTHOR_ENTITIES": {
+    "CREATOR_ENTITIES": {
       "$comment": " 2. 저자 엔티티 계층: 다형성 속성 출혈(Property Bleeding) 상호 배제."
     },
-    "authorRoot": {
+    "creatorRoot": {
       "type": "object",
       "required": ["@type"],
       "discriminator": {
@@ -303,7 +303,7 @@
             }
           },
           "then": {
-            "$ref": "#/$defs/authorPerson"
+            "$ref": "#/$defs/creatorPerson"
           }
         },
         {
@@ -315,7 +315,7 @@
             }
           },
           "then": {
-            "$ref": "#/$defs/authorGovernment"
+            "$ref": "#/$defs/creatorGovernment"
           }
         },
         {
@@ -327,7 +327,7 @@
             }
           },
           "then": {
-            "$ref": "#/$defs/authorCorporation"
+            "$ref": "#/$defs/creatorCorporation"
           }
         },
         {
@@ -339,7 +339,7 @@
             }
           },
           "then": {
-            "$ref": "#/$defs/authorOrganization"
+            "$ref": "#/$defs/creatorOrganization"
           }
         },
         {
@@ -351,12 +351,12 @@
             }
           },
           "then": {
-            "$ref": "#/$defs/authorSoftware"
+            "$ref": "#/$defs/creatorSoftware"
           }
         }
       ]
     },
-    "authorPerson": {
+    "creatorPerson": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
@@ -373,7 +373,7 @@
       },
       "additionalProperties": false
     },
-    "authorGovernment": {
+    "creatorGovernment": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
@@ -390,7 +390,7 @@
       },
       "additionalProperties": false
     },
-    "authorCorporation": {
+    "creatorCorporation": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
@@ -407,7 +407,7 @@
       },
       "additionalProperties": false
     },
-    "authorOrganization": {
+    "creatorOrganization": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {
@@ -424,7 +424,7 @@
       },
       "additionalProperties": false
     },
-    "authorSoftware": {
+    "creatorSoftware": {
       "type": "object",
       "required": ["@type", "@id", "name"],
       "properties": {

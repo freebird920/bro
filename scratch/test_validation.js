@@ -15,7 +15,7 @@ const testPayloads = [
       dateCreated: "2026-04-11T12:00:00Z",
       about: [{ "@type": "CreativeWork", identifier: "urn:isbn:978-89-01-23456-7" }],
       text: "---title: test\nlanguage: [ko]\nkeywords: [k]\ntoc: t\n---",
-      author: [{
+      creator: [{
         "@type": "SoftwareApplication",
         name: "gemini-1.5-pro",
         "@id": "urn:model:google:gemini-1.5-pro",
@@ -32,7 +32,7 @@ const testPayloads = [
       dateCreated: "2026-04-11T12:00:00Z",
       about: [{ "@type": "CreativeWork", identifier: "urn:isbn:978-89-01-23456-7" }],
       text: "---title: test\nlanguage: [ko]\nkeywords: [k]\ntoc: t\n---",
-      author: [{
+      creator: [{
         "@type": "SoftwareApplication",
         name: "bad-model",
         "@id": "urn:bad:id",
@@ -47,7 +47,7 @@ const testPayloads = [
       "@context": "https://schema.org",
       "@type": "ItemList",
       name: "Test List",
-      author: [{
+      creator: [{
         "@type": "Person",
         name: "Tester",
         "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000"

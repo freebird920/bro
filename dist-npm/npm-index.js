@@ -21,7 +21,7 @@ var bro_v1_schema_default = {
     BroItemList: {
       type: "object",
       description: "\uB2E4\uC911 \uD0C0\uAC9F \uBB38\uC11C \uD050\uB808\uC774\uC158\uC744 \uC704\uD55C \uC601\uC18D\uC801 \uCEE8\uD14C\uC774\uB108 \uC5D4\uD2F0\uD2F0 (ItemList).",
-      required: ["@context", "@type", "author", "itemListElement"],
+      required: ["@context", "@type", "creator", "itemListElement"],
       properties: {
         "@context": {
           const: "https://schema.org"
@@ -37,12 +37,12 @@ var bro_v1_schema_default = {
           minLength: 2,
           maxLength: 2e3
         },
-        author: {
+        creator: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
           items: {
-            $ref: "#/$defs/authorRoot"
+            $ref: "#/$defs/creatorRoot"
           }
         },
         itemListElement: {
@@ -70,7 +70,7 @@ var bro_v1_schema_default = {
         "@type",
         "about",
         "text",
-        "author",
+        "creator",
         "dateCreated"
       ],
       properties: {
@@ -115,12 +115,12 @@ var bro_v1_schema_default = {
             }
           }
         },
-        author: {
+        creator: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
           items: {
-            $ref: "#/$defs/authorRoot"
+            $ref: "#/$defs/creatorRoot"
           }
         }
       }
@@ -132,7 +132,7 @@ var bro_v1_schema_default = {
         "@context",
         "@type",
         "text",
-        "author",
+        "creator",
         "dateCreated",
         "isBasedOn"
       ],
@@ -159,12 +159,12 @@ var bro_v1_schema_default = {
           type: "string",
           description: "\uC694\uC57D\uBCF8\uC758 \uC5B8\uC5B4 \uCF54\uB4DC (\uC608: ko, en)"
         },
-        author: {
+        creator: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
           items: {
-            $ref: "#/$defs/authorRoot"
+            $ref: "#/$defs/creatorRoot"
           }
         },
         isBasedOn: {
@@ -285,10 +285,10 @@ var bro_v1_schema_default = {
       },
       additionalProperties: false
     },
-    AUTHOR_ENTITIES: {
+    CREATOR_ENTITIES: {
       $comment: " 2. \uC800\uC790 \uC5D4\uD2F0\uD2F0 \uACC4\uCE35: \uB2E4\uD615\uC131 \uC18D\uC131 \uCD9C\uD608(Property Bleeding) \uC0C1\uD638 \uBC30\uC81C."
     },
-    authorRoot: {
+    creatorRoot: {
       type: "object",
       required: ["@type"],
       discriminator: {
@@ -304,7 +304,7 @@ var bro_v1_schema_default = {
             }
           },
           then: {
-            $ref: "#/$defs/authorPerson"
+            $ref: "#/$defs/creatorPerson"
           }
         },
         {
@@ -316,7 +316,7 @@ var bro_v1_schema_default = {
             }
           },
           then: {
-            $ref: "#/$defs/authorGovernment"
+            $ref: "#/$defs/creatorGovernment"
           }
         },
         {
@@ -328,7 +328,7 @@ var bro_v1_schema_default = {
             }
           },
           then: {
-            $ref: "#/$defs/authorCorporation"
+            $ref: "#/$defs/creatorCorporation"
           }
         },
         {
@@ -340,7 +340,7 @@ var bro_v1_schema_default = {
             }
           },
           then: {
-            $ref: "#/$defs/authorOrganization"
+            $ref: "#/$defs/creatorOrganization"
           }
         },
         {
@@ -352,12 +352,12 @@ var bro_v1_schema_default = {
             }
           },
           then: {
-            $ref: "#/$defs/authorSoftware"
+            $ref: "#/$defs/creatorSoftware"
           }
         }
       ]
     },
-    authorPerson: {
+    creatorPerson: {
       type: "object",
       required: ["@type", "@id", "name"],
       properties: {
@@ -374,7 +374,7 @@ var bro_v1_schema_default = {
       },
       additionalProperties: false
     },
-    authorGovernment: {
+    creatorGovernment: {
       type: "object",
       required: ["@type", "@id", "name"],
       properties: {
@@ -391,7 +391,7 @@ var bro_v1_schema_default = {
       },
       additionalProperties: false
     },
-    authorCorporation: {
+    creatorCorporation: {
       type: "object",
       required: ["@type", "@id", "name"],
       properties: {
@@ -408,7 +408,7 @@ var bro_v1_schema_default = {
       },
       additionalProperties: false
     },
-    authorOrganization: {
+    creatorOrganization: {
       type: "object",
       required: ["@type", "@id", "name"],
       properties: {
@@ -425,7 +425,7 @@ var bro_v1_schema_default = {
       },
       additionalProperties: false
     },
-    authorSoftware: {
+    creatorSoftware: {
       type: "object",
       required: ["@type", "@id", "name"],
       properties: {
@@ -530,7 +530,7 @@ function normalizePayload(payload) {
 }
 
 // src/lib/bro-types.ts
-var AUTHOR_TYPES = [
+var CREATOR_TYPES = [
   "Person",
   "GovernmentOrganization",
   "Corporation",
@@ -772,8 +772,8 @@ function convertAbstractToKomarc(abstract) {
   };
 }
 export {
-  AUTHOR_TYPES,
   bro_v1_schema_default as BroV1Schema,
+  CREATOR_TYPES,
   bro_v1_schema_default as broV1Schema,
   convertBroToKomarc,
   normalizePayload,
