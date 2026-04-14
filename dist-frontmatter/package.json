@@ -1,0 +1,14 @@
+{
+  "name": "@slat.or.kr/bro-frontmatter",
+  "version": "1.0.1",
+  "main": "./frontmatter.cjs",
+  "module": "./frontmatter.js",
+  "types": "./frontmatter.d.ts",
+  "exports": {
+    ".": {
+      "require": "./frontmatter.cjs",
+      "import": "./frontmatter.js",
+      "types": "./frontmatter.d.ts"
+    }
+  }
+}

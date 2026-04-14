@@ -1,0 +1,140 @@
+{
+  "context": {
+    "ignoreGitIgnore": true,
+    "includeHiddenFiles": true,
+    "indexing": {
+      "respectGitIgnore": false
+    }
+  },
+  "experimental": {
+    "enableAgents": false
+  },
+  "modelConfigs": {
+    "customAliases": {
+      "deep": {
+        "modelConfig": {
+          "model": "gemini-3.1-pro-preview",
+          "generateContentConfig": {
+            "temperature": 1.0,
+            "topP": 0.95,
+            "topK": 64,
+            "maxOutputTokens": 8192,
+            "thinkingConfig": {
+              "thinkingLevel": "high"
+            },
+            "safetySettings": [
+              {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
+                "threshold": "BLOCK_NONE"
+              }
+            ]
+          }
+        }
+      },
+      "coder": {
+        "modelConfig": {
+          "model": "gemini-3.1-pro-preview",
+          "generateContentConfig": {
+            "systemInstruction": {
+              "role": "system",
+              "parts": [
+                {
+                  "text": "CRITICAL ARCHITECTURE RULES:\n1. All data schemas (IUnifiedMemo, etc.) MUST use snake_case for properties.\n2. Never access Dexie DB directly in components. Use encapsulated hooks like useChannels.\n3. Strictly follow functional parity during refactoring.\n4. Output ONLY the code block."
+                }
+              ]
+            },
+            "temperature": 0.3,
+            "topP": 0.95,
+            "topK": 64,
+            "maxOutputTokens": 8192,
+            "thinkingConfig": {
+              "thinkingLevel": "high"
+            },
+            "safetySettings": [
+              {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
+                "threshold": "BLOCK_NONE"
+              }
+            ]
+          }
+        }
+      },
+      "dev": {
+        "modelConfig": {
+          "model": "gemini-3.1-pro-preview",
+          "generateContentConfig": {
+            "systemInstruction": {
+              "role": "system",
+              "parts": [
+                {
+                  "text": "You are a Senior Full-Stack Engineer and Clean Code Architect with 20+ years of experience. Your goal is to perform high-precision code refactoring and structural analysis. Follow these rules strictly:\n1. **Functional Parity**: Never alter the original logic or behavior of the code. Only improve readability, performance, and maintainability.\n2. **Type Safety**: Enforce strict TypeScript types and eliminate 'any' types where possible.\n3. **Conciseness**: Minimize prose. Output the refactored code block as the primary response.\n4. **Security**: Identify and flag potential security vulnerabilities immediately.\n5. **Deep Reasoning**: Use the full extent of your thinking capacity to resolve logical edge cases."
+                }
+              ]
+            },
+            "temperature": 0.3,
+            "topP": 0.95,
+            "topK": 64,
+            "maxOutputTokens": 8192,
+            "thinkingConfig": {
+              "thinkingLevel": "high"
+            },
+            "safetySettings": [
+              {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
+                "threshold": "BLOCK_NONE"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
