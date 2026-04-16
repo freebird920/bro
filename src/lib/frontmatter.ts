@@ -7,10 +7,19 @@ import {
 import { validateStrictFrontmatter } from '../validator/index';
 
 /**
- * 1급 필드 목록. 이 목록 외의 키는 모두 others로 강제 묶입니다.
+ * 1급 필드 목록 (현재 파서 버전 기준).
+ * 이 목록 외의 키는 모두 others로 강제 묶입니다.
+ * 
+ * [파서 버전 승격 모델]
+ * 사용자는 인입(Ingestion) 시 임의의 키를 자유롭게 확장할 수 있으며,
+ * 서버는 이를 평탄화(Flat)된 상태 그대로 저장합니다.
+ * 반환(Response) 시, 현재 파서 버전이 인식하는 1급 필드만 최상위에 유지되고
+ * 나머지는 others 배열로 묶여 반환됩니다.
+ * 추후 특정 동적 키가 1급 객체로 승격되면 이 Set에 추가하고 파서 버전을 올립니다.
  */
 const FIRST_CLASS_FIELDS = new Set([
-  'title', 'language', 'keywords', 'byline', 'image', 'source_url', 'others'
+  'about_title', 'about_creator', 'article_title', 'article_byline',
+  'language', 'keywords', 'image', 'source_url', 'others'
 ]);
 
 /**
@@ -64,17 +73,18 @@ export function parseFrontmatter(markdownOrYaml: string, body?: string): Frontma
     const rawData = yaml.parse(yamlBlock) || {};
     
     // Extract strict fields (모두 optional)
-    if (rawData.title !== undefined) data.title = String(rawData.title);
-    
+    // — 문자열 1급 필드
+    if (rawData.about_title !== undefined) data.about_title = String(rawData.about_title);
+    if (rawData.about_creator !== undefined) data.about_creator = String(rawData.about_creator);
+    if (rawData.article_title !== undefined) data.article_title = String(rawData.article_title);
+    if (rawData.article_byline !== undefined) data.article_byline = String(rawData.article_byline);
+
+    // — 배열 1급 필드
     if (rawData.language !== undefined) {
       data.language = toStringArray(rawData.language);
     }
-
     if (rawData.keywords !== undefined) {
       data.keywords = toStringArray(rawData.keywords);
-    }
-    if (rawData.byline !== undefined) {
-      data.byline = toStringArray(rawData.byline);
     }
     if (rawData.image !== undefined) {
       data.image = toStringArray(rawData.image);
@@ -118,10 +128,12 @@ export function serializeFrontmatter(data: StrictFrontmatter, others: DynamicFie
   // 1. Parent Object Construction
   const yamlData: Record<string, unknown> = {};
   
-  if (data.title !== undefined) yamlData.title = data.title;
+  if (data.about_title !== undefined) yamlData.about_title = data.about_title;
+  if (data.about_creator !== undefined) yamlData.about_creator = data.about_creator;
+  if (data.article_title !== undefined) yamlData.article_title = data.article_title;
+  if (data.article_byline !== undefined) yamlData.article_byline = data.article_byline;
   if (data.language !== undefined) yamlData.language = data.language;
   if (data.keywords !== undefined) yamlData.keywords = data.keywords;
-  if (data.byline !== undefined) yamlData.byline = data.byline;
   if (data.image !== undefined) yamlData.image = data.image;
   if (data.source_url !== undefined) yamlData.source_url = data.source_url;
 

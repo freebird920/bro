@@ -39,11 +39,28 @@ var import_yaml = __toESM(require("yaml"), 1);
 // src/lib/schema-types.ts
 var v = __toESM(require("valibot"), 1);
 var StrictFrontmatterSchema = v.strictObject({
-  title: v.string("Title must be a strictly defined string."),
-  keywords: v.array(v.string("Keywords must be an array of strings.")),
-  byline: v.optional(v.array(v.string("Byline must be an array of strings."))),
+  about_title: v.optional(v.string("about_title must be a string.")),
+  about_creator: v.optional(v.string("about_creator must be a string.")),
+  article_title: v.optional(v.string("article_title must be a string.")),
+  article_byline: v.optional(v.string("article_byline must be a string.")),
+  language: v.optional(
+    v.array(
+      v.pipe(
+        v.string("Language items must be strings."),
+        v.regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)?$/, "Must be a valid BCP 47 / ISO 639 language code.")
+      ),
+      "Language must be an array of BCP 47 codes."
+    )
+  ),
+  keywords: v.optional(v.array(v.string("Keywords must be an array of strings."))),
   image: v.optional(v.array(v.string("Image must be an array of strings."))),
-  source_url: v.optional(v.array(v.string("Source URL must be an array of strings.")))
+  source_url: v.optional(v.array(v.string("Source URL must be an array of strings."))),
+  others: v.optional(
+    v.array(
+      v.record(v.string(), v.any()),
+      "Others must be an array of {key: value} objects."
+    )
+  )
 });
 var DynamicFieldSchema = v.record(v.string(), v.any());
 var OthersBundleSchema = v.array(DynamicFieldSchema);
@@ -55,315 +72,343 @@ var import_json_schema = require("@cfworker/json-schema");
 var bro_v1_schema_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://schema.slat.or.kr/bro/v1/schema.json",
-  title: "Bibliographic Reaction Object(BRO)",
-  description: "Bibliographic Reaction Object",
+  title: "Bibliographic Reaction Object (BRO)",
+  description: "Bibliographic Reaction Object (BRO)\uC758 \uC6D0\uC2DC\uC2A4\uD0A4\uB9C8 BroItemList, BroArticle, BroAbstract. \uBCF8 \uC2A4\uD0A4\uB9C8\uB294 \uC2DC\uC2A4\uD15C \uC4F0\uAE30(Write/Command) \uC804\uC6A9 \uBAA8\uB378\uC774\uBA70, \uD074\uB77C\uC774\uC5B8\uD2B8 \uC870\uD68C\uB97C \uC704\uD55C \uB0B4\uD3EC(Embedding) \uD2B8\uB9AC \uBCC0\uD658\uC740 \uBBF8\uB4E4\uC6E8\uC5B4 \uACC4\uCE35\uC758 \uCC45\uC784\uC73C\uB85C \uC704\uC784\uD568.\n[ARCHITECTURE CORE DIRECTIVE] \uBCF8 \uC6D0\uC2DC \uC2A4\uD0A4\uB9C8\uB294 \uC560\uADF8\uB9AC\uAC70\uD2B8 \uB8E8\uD2B8(Aggregate Root) \uAC04\uC758 \uAC1D\uCCB4 \uB0B4\uD3EC(Embedding)\uB97C \uC5C4\uACA9\uD788 \uAE08\uC9C0\uD558\uACE0 \uB2E8\uBC29\uD5A5 URN \uC2DD\uBCC4\uC790(@id) \uCC38\uC870\uB9CC\uC744 \uD5C8\uC6A9\uD55C\uB2E4. \uC774\uB294 \uBD84\uC0B0 DB \uD658\uACBD\uC5D0\uC11C \uD2B8\uB79C\uC7AD\uC158 \uB77D \uACBD\uD569\uACFC \uB2E4\uC911 \uD310\uBCF8 \uC5C5\uB370\uC774\uD2B8 \uC774\uC0C1\uC744 \uBC29\uC5B4\uD558\uAE30 \uC704\uD55C CQRS \uC4F0\uAE30 \uD30C\uC774\uD504\uB77C\uC778\uC758 \uBB3C\uB9AC\uC801 \uC81C\uC57D\uC774\uB2E4. \uD504\uB860\uD2B8\uC5D4\uB4DC \uB80C\uB354\uB9C1 \uCD5C\uC801\uD654\uB97C \uC704\uD55C JSON \uB0B4\uD3EC \uAD6C\uC870(View Model)\uAC00 \uD544\uC694\uD560 \uACBD\uC6B0, \uBCF8 \uC6D0\uC2DC \uC2A4\uD0A4\uB9C8\uB97C \uC218\uC815\uD558\uC9C0 \uB9D0\uACE0 \uB3C4\uBA54\uC778 \uACC4\uCE35\uC5D0\uC11C In-Memory Join\uC744 \uC218\uD589\uD558\uC5EC \uB3C4\uBA54\uC778 \uD2B9\uD654 \uC751\uB2F5 DTO\uB97C \uD569\uC131\uD560 \uAC83.",
   type: "object",
   oneOf: [
-    {
-      description: "\uD074\uB77C\uC774\uC5B8\uD2B8 \uB370\uC774\uD130 \uC778\uC785\uC6A9 \uC4F0\uAE30 \uD398\uC774\uB85C\uB4DC (Ingestion DTO - UUID \uAC80\uC99D \uBA74\uC81C)",
-      $ref: "#/$defs/articleIngestionPayload"
-    },
-    {
-      description: "\uC11C\uBC84 \uB0B4\uBD80 \uBC0F \uC870\uD68C\uC6A9 \uC601\uC18D\uC131 \uC5D4\uD2F0\uD2F0 (Persisted Entity - UUID \uD544\uC218 \uAC15\uC81C, \uBC18\uCD9C \uC2DC \uC9ED UUID\uB85C \uCE58\uD658\uD560 \uAC83)",
-      $ref: "#/$defs/articlePersistedEntity"
-    },
-    {
-      description: "\uB3C4\uC11C \uAD00\uB828 \uAE00 \uBAA9\uB85D (ItemList - \uB2E4\uC911 \uBC30\uC5F4 \uB9E4\uD2B8\uB9AD\uC2A4)",
-      $ref: "#/$defs/itemListDefinition"
-    }
+    { $ref: "#/$defs/BroItemList" },
+    { $ref: "#/$defs/BroArticle" },
+    { $ref: "#/$defs/BroAbstract" }
   ],
   $defs: {
-    itemListDefinition: {
+    BroItemList: {
       type: "object",
-      required: ["@context", "@type", "author", "itemListElement"],
+      description: "\uB2E4\uC911 \uD0C0\uAC9F \uBB38\uC11C \uD050\uB808\uC774\uC158\uC744 \uC704\uD55C \uC601\uC18D\uC801 \uCEE8\uD14C\uC774\uB108 \uC5D4\uD2F0\uD2F0 (ItemList).",
+      required: ["@context", "@type", "creator", "itemListElement"],
       properties: {
-        "@context": {
-          const: "https://schema.org"
-        },
-        "@type": {
-          const: "ItemList"
-        },
-        "@id": {
-          type: "string",
-          pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-        },
+        "@context": { const: "https://schema.org" },
+        "@type": { const: "ItemList" },
+        "@id": { $ref: "#/$defs/urnUuidOnly" },
         name: {
           type: "string",
           minLength: 2,
-          maxLength: 200
+          maxLength: 2e3
         },
-        author: {
+        creator: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
-          description: "\uB3C4\uC11C \uBAA9\uB85D \uC791\uC131/\uC0DD\uC131 \uC8FC\uCCB4 \uBC30\uC5F4. \uB2E4\uC218 \uC8FC\uCCB4(\uACF5\uB3D9 \uC800\uC790, \uB2E4\uC911 \uC2DC\uC2A4\uD15C) \uBC14\uC778\uB529 \uC9C0\uC6D0.",
-          items: {
-            $ref: "#/$defs/authorDefinitions"
-          }
+          items: { $ref: "#/$defs/creatorRoot" }
         },
         itemListElement: {
           type: "array",
-          minItems: 0,
-          description: "\uB3C4\uC11C \uBAA9\uB85D\uC758 \uAC01 \uD56D\uBAA9. \uBAA8\uB4E0 \uD56D\uBAA9\uC740 Article\uB85C \uADDC\uACA9\uD654\uB418\uBA70, \uC21C\uC218\uD55C \uB3C4\uC11C \uCD94\uAC00\uC758 \uACBD\uC6B0 text\uAC00 \uBE48 \uBB38\uC790\uC5F4\uC778 Article\uB85C \uCDE8\uAE09\uB429\uB2C8\uB2E4.",
+          description: "\uB9AC\uC2A4\uD2B8\uC5D0 \uD3EC\uD568\uB41C \uAC1C\uBCC4 \uBB38\uC11C(Article \uB4F1)\uC758 \uC2DD\uBCC4\uC790 \uBAA9\uB85D. \uD398\uC774\uB85C\uB4DC \uC0DD\uC131 \uC2DC \uBC18\uB4DC\uC2DC @id \uAC1D\uCCB4 \uBC30\uC5F4\uB9CC\uC744 \uC804\uC1A1\uD574\uC57C \uD558\uBA70, \uBB38\uC11C \uAC1D\uCCB4 \uC804\uCCB4\uB97C \uBC30\uC5F4 \uB0B4\uBD80\uC5D0 \uB0B4\uD3EC(Embed)\uD558\uB294 \uD398\uC774\uB85C\uB4DC\uB294 \uAC80\uC99D(Validation) \uB2E8\uACC4\uC5D0\uC11C \uAC70\uBD80(Reject)\uB41C\uB2E4.\n[ANTI-PATTERN PREVENTION] itemListElement \uB0B4\uBD80\uC758 oneOf\uB97C \uD1B5\uD55C Article \uAC1D\uCCB4 \uC9C1\uC811 \uD3EC\uD568 \uD5C8\uC6A9 \uB85C\uC9C1\uC740 \uB370\uC774\uD130 \uB2E8\uD3B8\uD654 \uBC29\uC9C0 \uBC0F \uC2DD\uBCC4\uC790 \uC815\uADDC\uD654\uB97C \uC704\uD574 \uC601\uAD6C \uC0AD\uC81C\uB428. \uBAA8\uB4E0 \uD558\uC704 \uC5D4\uD2F0\uD2F0 \uACB0\uD569\uC740 \uC624\uC9C1 @id \uD3EC\uC778\uD130\uB85C\uB9CC \uC774\uB8E8\uC5B4\uC838\uC57C \uD568.",
           items: {
-            $ref: "#/$defs/articleIngestionPayload"
+            type: "object",
+            required: ["@id"],
+            properties: {
+              "@id": { $ref: "#/$defs/urnUuidOnly" }
+            }
           }
         }
       }
     },
-    isbnDefinition: {
-      type: "string",
-      pattern: "^(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$"
-    },
-    abstractDefinition: {
+    BroArticle: {
       type: "object",
-      required: ["@type", "@id", "text", "author", "dateCreated"],
-      unevaluatedProperties: false,
+      description: "\uB2E8\uC77C \uCF54\uC5B4 \uBB38\uC11C(Article) \uCC98\uB9AC\uB97C \uC704\uD55C \uC4F0\uAE30/\uC601\uC18D\uC131 \uC2A4\uD0A4\uB9C8. \uD30C\uC0DD \uBB38\uC11C(Abstract \uB4F1)\uC640\uC758 \uACB0\uD569\uC740 \uC678\uBD80 \uCC38\uC870(@id)\uB85C\uB9CC \uC774\uB904\uC9C4\uB2E4.",
+      required: [
+        "@context",
+        "@type",
+        "about",
+        "text",
+        "creator",
+        "dateCreated"
+      ],
       properties: {
-        "@type": {
-          const: "CreativeWork"
-        },
-        "@id": {
-          type: "string",
-          pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-          description: "\uC6D0\uBCF8 \uB370\uC774\uD130\uC758 UUID\uC640 \uC0DD\uC131 \uC2DC\uAC04\uC744 \uAE30\uBC18\uC73C\uB85C \uD55C \uACB0\uC815\uB860\uC801 UUID. \uBCF8 \uAC1D\uCCB4\uB294 \uBD88\uBCC0(Immutable)\uD558\uBA70 \uAC31\uC2E0 \uC2DC \uC0C8\uB85C\uC6B4 UUID\uAC00 \uBC1C\uAE09\uB418\uC5B4\uC57C \uD568."
-        },
-        dateCreated: {
-          type: "string",
-          format: "date-time",
-          description: "\uC694\uC57D \uAC1D\uCCB4\uC758 \uCD5C\uCD08 \uC0DD\uC131 \uD0C0\uC784\uC2A4\uD0EC\uD504 (ISO 8601 / RFC 3339 \uC900\uC218). \uBD88\uBCC0\uC131 \uC6D0\uCE59\uC5D0 \uB530\uB77C \uB370\uC774\uD130 \uC218\uC815 \uC2DC updated \uD544\uB4DC\uB97C \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uACE0 \uC2E0\uADDC \uAC1D\uCCB4\uC640 \uC0C8\uB85C\uC6B4 dateCreated\uB97C \uBC1C\uAE09\uD558\uC5EC \uBA71\uB4F1\uC131\uC744 \uBCF4\uC7A5\uD568. (Mapping: KOMARC \uB9E4\uD551\uC2DC YYYYMMDD \uD3EC\uB9F7\uC73C\uB85C \uBB38\uC790\uC5F4 \uC808\uC0AD \uCC98\uB9AC\uB418\uC5B4 KOMARC 552 \u25BEk \uC18D\uC131 \uAC12\uC758 \uAC1C\uC2DC\uC77C\uC790/\uC885\uB8CC\uC77C\uC790\uC5D0 \uBC14\uC778\uB529\uB428)"
-        },
-        text: {
-          type: "string",
-          description: "LLM \uB610\uB294 \uC0AC\uB78C\uC774 \uC791\uC131\uD55C \uB9AC\uBDF0, \uBD84\uC11D, \uBE44\uD3C9 \uB4F1 \uD30C\uC0DD \uB370\uC774\uD130\uC5D0 \uB300\uD55C \uC815\uD615\uD654\uB41C \uC0C1\uC138 \uC694\uC57D \uBCF8\uBB38. (Mapping: KOMARC 552 \u25BEo \uAC1C\uCCB4/\uC18D\uC131 \uAC1C\uC694 \uC11C\uBE0C\uD544\uB4DC\uC5D0 \uC9C1\uC811 \uC8FC\uC785\uB428)"
-        },
-        author: {
-          type: "array",
-          minItems: 1,
-          uniqueItems: true,
-          description: "\uC694\uC57D \uB370\uC774\uD130 \uC0DD\uC131 \uC8FC\uCCB4 \uBC30\uC5F4. \uAE30\uACC4(LLM)\uC640 \uC778\uAC04 \uC791\uC5C5\uC790\uC758 \uACF5\uB3D9 \uC791\uC5C5 \uB4F1 \uBCF5\uC218 \uC8FC\uCCB4 \uBA85\uC2DC.",
-          items: {
-            $ref: "#/$defs/authorDefinitions"
-          }
-        }
-      }
-    },
-    articleBaseProperties: {
-      type: "object",
-      properties: {
-        "@context": {
-          const: "https://schema.org"
-        },
-        "@type": {
-          const: "Article"
-        },
-        dateCreated: {
-          type: "string",
-          format: "date-time",
-          description: "\uD30C\uC0DD \uBB38\uC11C \uC5D4\uD2F0\uD2F0\uC758 \uCD5C\uCD08 \uC0DD\uC131 \uD0C0\uC784\uC2A4\uD0EC\uD504 (ISO 8601 / RFC 3339 \uC900\uC218). \uB370\uC774\uD130 \uBB34\uACB0\uC131\uC744 \uC704\uD574 \uAC31\uC2E0\uC744 \uD5C8\uC6A9\uD558\uC9C0 \uC54A\uC74C(No Update). \uC218\uC815 \uC694\uAD6C \uBC1C\uC0DD \uC2DC \uAE30\uC874 \uAC1D\uCCB4\uB97C \uB17C\uB9AC\uC801 \uC0AD\uC81C \uB610\uB294 \uC544\uCE74\uC774\uBE59\uD558\uACE0 \uC2E0\uADDC \uD0C0\uC784\uC2A4\uD0EC\uD504\uB97C \uD68D\uB4DD\uD55C \uC0C8 \uAC1D\uCCB4\uB85C \uB300\uCCB4\uD568. (Mapping: KOMARC \uC5F0\uB3D9 \uC2DC YYYYMMDD\uB85C \uB2E4\uC6B4\uCE90\uC2A4\uD305\uB418\uC5B4 552 \u25BEk \uC11C\uBE0C\uD544\uB4DC\uC5D0 \uAC1C\uC2DC\uC77C\uC790\uB85C \uB9F5\uD551\uB428)"
-        },
+        "@context": { const: "https://schema.org" },
+        "@type": { const: "Article" },
+        "@id": { $ref: "#/$defs/urnUuidOnly" },
+        dateCreated: { $ref: "#/$defs/strictDateTime" },
+        datePublished: { $ref: "#/$defs/strictDateTime" },
         about: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
-          description: "\uD30C\uC0DD \uBB38\uC11C\uAC00 \uD0C0\uAC9F\uD305\uD558\uB294 \uCF54\uC5B4 \uC11C\uC9C0 \uC5D4\uD2F0\uD2F0 \uBC30\uC5F4. \uB2E8\uAD8C, \uB2E4\uAD8C\uBCF8 \uC138\uD2B8, \uB3D9\uC77C \uC800\uC791\uBB3C\uC758 \uC774\uAE30\uC885 \uD310\uBCF8(\uAC1C\uC815\uD310, e-book \uB4F1 \uC5EC\uB7EC ISBN)\uC744 \uBB34\uC81C\uD55C\uC73C\uB85C \uBC14\uC778\uB529\uD560 \uC218 \uC788\uC74C. \uB2E8\uC77C \uB3C4\uC11C \uD0C0\uAC9F\uD305 \uC2DC\uC5D0\uB3C4 \uBC18\uB4DC\uC2DC \uC6D0\uC18C 1\uAC1C\uC9DC\uB9AC \uBC30\uC5F4\uB85C \uC778\uC785\uB418\uC5B4\uC57C \uD568.",
+          description: "\uD30C\uC0DD \uBB38\uC11C\uAC00 \uD0C0\uAC9F\uD305\uD558\uB294 \uCF54\uC5B4 \uC800\uC791\uBB3C \uC5D4\uD2F0\uD2F0. \uB2E4\uC911 \uD310\uBCF8 \uBC14\uC778\uB529 \uC2DC \uBCF5\uC218\uC758 \uC6D0\uC18C\uB97C \uD5C8\uC6A9\uD558\uB098, \uAC01 \uC694\uC18C\uB294 \uB2E8\uC77C URN\uC744 \uC18C\uC720\uD568.",
+          items: { $ref: "#/$defs/terminalIdentifier" }
+        },
+        text: { $ref: "#/$defs/boundedText" },
+        abstract: {
+          type: "array",
+          description: "\uD604\uC7AC \uBB38\uC11C(Article)\uC5D0 \uC885\uC18D\uB41C \uD30C\uC0DD \uC694\uC57D\uBCF8\uC758 \uC2DD\uBCC4\uC790(URN) \uBC30\uC5F4. \uC694\uC57D\uBCF8\uC758 \uC0C1\uC138 \uD14D\uC2A4\uD2B8(Text)\uB294 \uD3EC\uD568\uD558\uC9C0 \uC54A\uB294\uB2E4.\n[DATA REDUNDANCY LOCK] Article \uD398\uC774\uB85C\uB4DC \uB0B4\uC5D0 Abstract \uBCF8\uBB38 \uB0B4\uD3EC\uB97C \uD5C8\uC6A9\uD560 \uACBD\uC6B0 \uBC1C\uC0DD\uD558\uB294 1:N \uAD6C\uC870\uC758 \uB514\uC2A4\uD06C \uC911\uBCF5 \uC801\uC7AC(Redundancy) \uBC0F B-Tree \uBD84\uD560\uC744 \uB9C9\uAE30 \uC704\uD574 \uCCA0\uC800\uD788 \uC2DD\uBCC4\uC790 \uCC38\uC870 \uCCB4\uACC4\uB85C \uACE0\uB9BD\uC2DC\uD0B4.",
           items: {
             type: "object",
-            required: ["@type", "isbn"],
-            unevaluatedProperties: false,
+            required: ["@id"],
             properties: {
-              "@type": {
-                const: "Book"
-              },
-              isbn: {
-                $ref: "#/$defs/isbnDefinition",
-                description: "\uAD6D\uC81C\uD45C\uC900\uB3C4\uC11C\uBC88\uD638 \uC2DD\uBCC4\uC790."
-              }
+              "@id": { $ref: "#/$defs/urnUuidOnly" }
             }
           }
         },
-        text: {
-          type: "string",
-          minLength: 0,
-          maxLength: 3e5,
-          description: "\uBC94\uC6A9 \uBB38\uC11C \uD14D\uC2A4\uD2B8. \uCD5C\uC0C1\uB2E8 YAML Frontmatter \uCEA1\uC290\uD654 \uD544\uC218. \uB370\uC774\uD130 \uC778\uC785 \uC2DC \uD504\uB860\uD2B8\uB9E4\uD130 \uB0B4\uBD80\uC758 \uC784\uC758\uC758 \uD0A4(Arbitrary Keys) \uD655\uC7A5\uC740 \uC804\uBA74 \uD5C8\uC6A9\uB428. \uB2E8, API \uBC18\uD658 \uBC0F \uC601\uC18D\uD654 \uAC1D\uCCB4 \uD45C\uCD9C \uC2DC \uD30C\uC774\uD504\uB77C\uC778\uC740 \uBC18\uB4DC\uC2DC \uB370\uC774\uD130\uB97C \uC815\uADDC\uD654\uD558\uC5EC 1\uAE09 \uD544\uB4DC\uC778 `title`(string), `byline`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[])\uB9CC\uC744 \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uC9C1\uB82C\uD654\uD558\uACE0, \uAE30\uD0C0 \uBAA8\uB4E0 \uC794\uC5EC \uB3D9\uC801 \uB370\uC774\uD130\uB294 `others: [{key: value}, ...]` \uD615\uD0DC\uC758 \uBC30\uC5F4 \uAC1D\uCCB4\uB85C \uAC15\uC81C \uBB36\uC74C \uCC98\uB9AC\uD558\uC5EC \uB9C8\uD06C\uB2E4\uC6B4\uC744 \uC7AC\uC870\uB9BD\uD574\uC57C \uD568. (Mapping Protocol: \uBCF8 \uB370\uC774\uD130 \uC138\uD2B8\uC758 \uADDC\uACA9 \uCD9C\uCC98\uB294 KOMARC 552 \u25BEh \uBD80\uD638\uC138\uD2B8 \uC774\uB984/\uCD9C\uCC98\uC5D0 `https://schema.slat.or.kr/bro/v1/schema.json` \uC2DD\uBCC4\uC790\uB85C \uBA85\uC2DC\uB418\uC5B4\uC57C \uD558\uBA70, text \uD398\uC774\uB85C\uB4DC \uC6D0\uBB38\uC740 552 \u25BEu\uC758 URI \uC2DD\uBCC4\uC790\uB97C \uD1B5\uD574 \uC678\uBD80 \uD574\uC18C\uB418\uC5B4\uC57C \uD568) @format markdown @ai-hint Frontmatter \uD30C\uC2F1\uC740 \uC815\uADDC\uC2DD ^---\\n([\\s\\S]*?)\\n--- \uB97C \uC0AC\uC6A9\uD558\uB418, \uC5ED\uC9C1\uB82C\uD654 \uBC18\uD658 \uC2DC `title`, `byline`, `keywords`, `image`, `source_url` \uBC0F \uC794\uC5EC K-V \uD29C\uD50C\uC744 \uD3EC\uD568\uD558\uB294 `others` \uB178\uB4DC\uB9CC\uC744 \uD3EC\uD568\uD558\uB3C4\uB85D \uC7AC\uAD6C\uC131\uD560 \uAC83."
-        },
-        abstract: {
-          $ref: "#/$defs/abstractDefinition",
-          description: "\uBB38\uC11C\uC758 \uAD6C\uC870\uD654\uB41C \uC694\uC57D \uB370\uC774\uD130 (\uAE30\uACC4 \uB610\uB294 \uC0AC\uB78C\uC774 \uC791\uC131)"
-        },
-        author: {
+        creator: {
           type: "array",
           minItems: 1,
           uniqueItems: true,
-          description: "\uBCF8\uBB38 \uB370\uC774\uD130 \uC0DD\uC131 \uC8FC\uCCB4 \uBC30\uC5F4. \uBCF5\uC218 \uC778\uC6D0 \uACF5\uB3D9 \uC9D1\uD544 \uBC0F \uBCF5\uD569 \uBAA8\uB378 \uAD00\uC5EC \uC774\uB825 \uCD94\uC801\uC6A9.",
-          items: {
-            $ref: "#/$defs/authorDefinitions"
-          }
+          items: { $ref: "#/$defs/creatorRoot" }
         }
       }
     },
-    articleIngestionPayload: {
-      description: "\uD074\uB77C\uC774\uC5B8\uD2B8 POST \uD398\uC774\uB85C\uB4DC \uAD6C\uC870 (\uC11C\uBC84 \uC0AC\uC774\uB4DC \uBCC0\uC218 \uD1B5\uC81C)",
+    BroAbstract: {
       type: "object",
+      description: "\uB2E8\uC77C \uC694\uC57D\uBCF8(Abstract) \uCC98\uB9AC\uB97C \uC704\uD55C \uC6D0\uC2DC \uC2A4\uD0A4\uB9C8",
       required: [
         "@context",
         "@type",
-        "about",
         "text",
-        "author",
-        "dateCreated"
+        "creator",
+        "dateCreated",
+        "isBasedOn"
       ],
-      unevaluatedProperties: false,
-      allOf: [
-        {
-          $ref: "#/$defs/articleBaseProperties"
+      properties: {
+        "@context": { const: "https://schema.org" },
+        "@type": { const: "CreativeWork" },
+        "@id": { $ref: "#/$defs/urnUuidOnly" },
+        dateCreated: { $ref: "#/$defs/strictDateTime" },
+        datePublished: { $ref: "#/$defs/strictDateTime" },
+        text: { $ref: "#/$defs/boundedText" },
+        creator: {
+          type: "array",
+          minItems: 1,
+          uniqueItems: true,
+          items: { $ref: "#/$defs/creatorRoot" }
+        },
+        isBasedOn: {
+          type: "array",
+          minItems: 1,
+          description: "\uC774 \uC694\uC57D\uC774 \uAE30\uBC18\uD558\uACE0 \uC788\uB294 \uC6D0\uBCF8 \uC5D4\uD2F0\uD2F0(Article \uB610\uB294 \uB3C4\uC11C \uB4F1 CreativeWork)\uC758 \uC2DD\uBCC4\uC790",
+          items: { $ref: "#/$defs/terminalIdentifier" }
         }
+      }
+    },
+    urnIdentifier: {
+      type: "string",
+      description: "[BASE_PRIMITIVES: 1. \uC6D0\uC2DC \uB370\uC774\uD130 \uACC4\uCE35 - \uC2DD\uBCC4\uC790, \uB0A0\uC9DC \uD1B5\uC81C] \uC2DD\uBCC4\uC790 \uAC80\uC99D. \uC2DC\uC2A4\uD15C \uB808\uBCA8\uC758 \uC18C\uBB38\uC790 URN Scheme \uC815\uADDC\uD654\uB97C \uC804\uC81C\uB85C \uD328\uD134\uC744 \uB2E8\uC21C\uD654\uD568.",
+      oneOf: [
+        { pattern: "^urn:isbn:(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$" },
+        { pattern: "^urn:doi:10\\.\\d{4,9}\\/[-._;()/:A-Za-z0-9]+$" },
+        { pattern: "^urn:uci:[a-zA-Z0-9]{3,10}[:\\-+][a-zA-Z0-9\\-+.:]+$" },
+        { pattern: "^urn:kolis:[a-zA-Z0-9]+$" },
+        {
+          pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        { pattern: "^urn:nlk:[a-zA-Z0-9]+$" }
       ]
     },
-    articlePersistedEntity: {
-      description: "\uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uC601\uC18D\uC131 \uBC0F \uB370\uC774\uD130 \uBC18\uCD9C\uC6A9 \uC5C4\uACA9\uD55C \uC2A4\uD0A4\uB9C8 \uAD6C\uC870",
-      type: "object",
-      unevaluatedProperties: false,
-      required: [
-        "@context",
-        "@type",
-        "@id",
-        "about",
-        "text",
-        "author",
-        "dateCreated"
-      ],
-      allOf: [
-        {
-          $ref: "#/$defs/articleBaseProperties"
-        },
-        {
-          properties: {
-            "@id": {
+    urnUuidOnly: {
+      type: "string",
+      pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+      description: "UUID v4(\uB79C\uB364) \uBC0F v7(\uD0C0\uC784\uC2A4\uD0EC\uD504) v5(\uB124\uC784\uC2A4\uD398\uC774\uC2A4 \uAE30\uBC18 SHA-1 \uD574\uC2DC)"
+    },
+    urnOrcid: {
+      type: "string",
+      pattern: "^urn:orcid:\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
+    },
+    urnIsni: {
+      type: "string",
+      pattern: "^urn:isni:0000[ \\-]?\\d{4}[ \\-]?\\d{4}[ \\-]?\\d{3}[0-9X]$"
+    },
+    urnLei: { type: "string", pattern: "^urn:lei:[0-9A-Z]{20}$" },
+    urnGovcode: { type: "string", pattern: "^urn:kr:govcode:\\d{7}$" },
+    urnCrn: { type: "string", pattern: "^urn:kr:crn:\\d{13}$" },
+    urnBrn: { type: "string", pattern: "^urn:kr:brn:\\d{10}$" },
+    urnNpo: { type: "string", pattern: "^urn:kr:npo:\\d{10}$" },
+    urnModel: {
+      type: "string",
+      pattern: "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$"
+    },
+    strictDateTime: {
+      type: "string",
+      format: "date-time",
+      pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+      description: "RFC 3339 \uAE30\uBC18 \uB0A0\uC9DC \uD3EC\uB9F7 \uAC80\uC99D. Z \uB610\uB294 \uC624\uD504\uC14B(+09:00)\uC744 \uAC15\uC81C\uD558\uC5EC \uD0C0\uC784\uC874 \uB204\uB77D\uC73C\uB85C \uC778\uD55C DB \uB370\uC774\uD130 \uC624\uC5FC \uBC29\uC9C0."
+    },
+    boundedText: {
+      type: "string",
+      minLength: 0,
+      maxLength: 3e5,
+      description: "\uBC94\uC6A9 \uBB38\uC11C \uD14D\uC2A4\uD2B8. \uCD5C\uC0C1\uB2E8 YAML Frontmatter \uCEA1\uC290\uD654 \uD544\uC218. [\uD655\uC7A5\uC131 \uBAA8\uB378] \uB370\uC774\uD130 \uC778\uC785(Ingestion) \uC2DC \uD504\uB860\uD2B8\uB9E4\uD130 \uB0B4\uBD80\uC5D0 \uC784\uC758\uC758 \uD0A4(Arbitrary Keys)\uB97C \uC120\uC5B8\xB7\uD655\uC7A5\uD558\uB294 \uAC83\uC744 \uC804\uBA74 \uD5C8\uC6A9\uD568. \uC11C\uBC84\uB294 \uC778\uC785\uB41C \uD0A4\uB97C \uC6D0\uBCF8 \uADF8\uB300\uB85C \uC601\uC18D\uD654(Flat \uC800\uC7A5)\uD55C\uB2E4. \uB2E8, API \uBC18\uD658(Response) \uC2DC \uD30C\uC774\uD504\uB77C\uC778\uC740 **\uD604\uC7AC \uD30C\uC11C \uBC84\uC804\uC774 \uC815\uC758\uD558\uB294 1\uAE09 \uD544\uB4DC** \u2014 `about_title`(string), `about_creator`(string), `article_title`(string), `article_byline`(string), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[]) \u2014 \uB9CC\uC744 \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uC9C1\uB82C\uD654\uD558\uACE0, \uAE30\uD0C0 \uBAA8\uB4E0 \uC794\uC5EC \uB3D9\uC801 \uB370\uC774\uD130\uB294 `others: [{key: value}, ...]` \uD615\uD0DC\uC758 \uBC30\uC5F4 \uAC1D\uCCB4\uB85C \uAC15\uC81C \uBB36\uC74C \uCC98\uB9AC\uD558\uC5EC \uB9C8\uD06C\uB2E4\uC6B4\uC744 \uC7AC\uC870\uB9BD\uD55C\uB2E4. \uCD94\uD6C4 \uD2B9\uC815 \uB3D9\uC801 \uD0A4\uAC00 1\uAE09 \uAC1D\uCCB4\uB85C \uC2B9\uACA9\uB418\uBA74 \uD30C\uC11C \uBC84\uC804\uC744 \uC5C5\uB370\uC774\uD2B8\uD558\uC5EC \uD574\uB2F9 \uD0A4\uB97C others\uAC00 \uC544\uB2CC \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uCD9C\uB825\uD55C\uB2E4. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]",
+      "x-frontmatter-schema": {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: {
+          about_title: { type: "string" },
+          about_creator: {
+            type: "string"
+          },
+          article_title: { type: "string" },
+          article_byline: {
+            type: "string"
+          },
+          language: {
+            type: "array",
+            items: {
               type: "string",
-              pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              pattern: "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)?$"
             },
-            datePublished: {
-              type: "string",
-              format: "date",
-              description: "\uC5D4\uD2F0\uD2F0\uC758 \uBC1C\uD589/\uC601\uC18D\uD654 \uC77C\uC790. (Mapping: KOMARC 552 \u25BEk \uC11C\uBE0C\uD544\uB4DC\uC5D0 \uC885\uB8CC\uC77C\uC790 \uB610\uB294 \uC720\uD6A8\uC77C\uC790\uB85C \uB9F5\uD551\uB428)"
+            minItems: 0,
+            uniqueItems: true
+          },
+          keywords: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
+          },
+          image: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
+          },
+          source_url: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
+          },
+          others: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: true
             }
           }
-        }
-      ]
+        },
+        additionalProperties: false,
+        required: []
+      }
     },
-    authorDefinitions: {
+    terminalIdentifier: {
       type: "object",
-      required: ["@type", "@id", "name"],
-      unevaluatedProperties: false,
+      description: "\uC21C\uD658 \uCC38\uC870(Billion Laughs) \uACF5\uACA9\uC744 \uCC28\uB2E8\uD558\uAE30 \uC704\uD55C \uD130\uBBF8\uB110 \uAC1D\uCCB4.",
+      required: ["@type", "identifier"],
       properties: {
         "@type": {
-          enum: [
-            "Person",
-            "GovernmentOrganization",
-            "Corporation",
-            "Organization",
-            "SoftwareApplication"
-          ]
+          enum: ["Article", "CreativeWork"]
         },
+        identifier: { $ref: "#/$defs/urnIdentifier" }
+      },
+      additionalProperties: false
+    },
+    creatorRoot: {
+      type: "object",
+      description: "[CREATOR_ENTITIES: 2. \uC800\uC790 \uC5D4\uD2F0\uD2F0 \uACC4\uCE35] \uB2E4\uD615\uC131 \uC18D\uC131 \uCD9C\uD608(Property Bleeding) \uC0C1\uD638 \uBC30\uC81C.",
+      required: ["@type"],
+      oneOf: [
+        { $ref: "#/$defs/creatorPerson" },
+        { $ref: "#/$defs/creatorGovernment" },
+        { $ref: "#/$defs/creatorCorporation" },
+        { $ref: "#/$defs/creatorOrganization" },
+        { $ref: "#/$defs/creatorSoftware" }
+      ]
+    },
+    creatorPerson: {
+      type: "object",
+      required: ["@type", "@id", "name"],
+      properties: {
+        "@type": { const: "Person" },
         name: {
           type: "string",
-          maxLength: 100,
-          description: "\uD30C\uC0DD \uBB38\uC11C(\uC694\uC57D, \uC11C\uD3C9 \uB4F1)\uB97C \uC0DD\uC131\uD55C \uC8FC\uCCB4\uC758 \uC774\uB984 \uB610\uB294 \uAE30\uAD00/\uC2DC\uC2A4\uD15C\uBA85. \uC8FC\uC758: \uC6D0\uBCF8 \uB3C4\uC11C\uC758 \uC800\uC790(\uC11C\uC9C0 \uD45C\uC900\uC758 1XX/7XX \uACC4\uCE35)\uC640 \uC5C4\uACA9\uD788 \uBD84\uB9AC\uB41C \uB3C4\uBA54\uC778\uC784."
+          maxLength: 1e3
+        },
+        "@id": {
+          oneOf: [
+            { $ref: "#/$defs/urnUuidOnly" },
+            { $ref: "#/$defs/urnOrcid" },
+            { $ref: "#/$defs/urnIsni" }
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    creatorGovernment: {
+      type: "object",
+      required: ["@type", "@id", "name"],
+      properties: {
+        "@type": { const: "GovernmentOrganization" },
+        name: {
+          type: "string",
+          maxLength: 1e3
+        },
+        "@id": {
+          oneOf: [
+            { $ref: "#/$defs/urnUuidOnly" },
+            { $ref: "#/$defs/urnGovcode" },
+            { $ref: "#/$defs/urnLei" },
+            { $ref: "#/$defs/urnIsni" }
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    creatorCorporation: {
+      type: "object",
+      required: ["@type", "@id", "name"],
+      properties: {
+        "@type": { const: "Corporation" },
+        name: {
+          type: "string",
+          maxLength: 1e3
+        },
+        "@id": {
+          oneOf: [
+            { $ref: "#/$defs/urnUuidOnly" },
+            { $ref: "#/$defs/urnCrn" },
+            { $ref: "#/$defs/urnBrn" },
+            { $ref: "#/$defs/urnLei" },
+            { $ref: "#/$defs/urnIsni" }
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    creatorOrganization: {
+      type: "object",
+      required: ["@type", "@id", "name"],
+      properties: {
+        "@type": { const: "Organization" },
+        name: {
+          type: "string",
+          maxLength: 1e3
+        },
+        "@id": {
+          oneOf: [
+            { $ref: "#/$defs/urnUuidOnly" },
+            { $ref: "#/$defs/urnNpo" },
+            { $ref: "#/$defs/urnLei" },
+            { $ref: "#/$defs/urnIsni" }
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    creatorSoftware: {
+      type: "object",
+      required: ["@type", "@id", "name"],
+      properties: {
+        "@type": { const: "SoftwareApplication" },
+        name: {
+          type: "string",
+          maxLength: 1e3
         },
         softwareVersion: {
           type: "string",
-          description: "LLM \uB4F1 \uBAA8\uB378\uC758 \uC138\uBD80 \uBC84\uC804"
+          maxLength: 50
         },
         "@id": {
-          type: "string",
-          description: "\uC11C\uBC84 \uB0B4\uBD80\uC5D0\uC11C\uB294 \uC6D0\uBCF8 UUID v7\uC744 \uC720\uC9C0\uD558\uB418, \uD074\uB77C\uC774\uC5B8\uD2B8 \uBC18\uCD9C \uC2DC \uBC18\uB4DC\uC2DC \uAC00\uBA85 \uCC98\uB9AC\uB41C \uAC12\uC744 \uBC14\uC778\uB529\uD560 \uAC83."
+          oneOf: [{ $ref: "#/$defs/urnModel" }]
         }
       },
-      allOf: [
-        {
-          if: {
-            properties: {
-              "@type": {
-                const: "Person"
-              }
-            }
-          },
-          then: {
-            properties: {
-              "@id": {
-                pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-              }
-            }
-          }
-        },
-        {
-          if: {
-            properties: {
-              "@type": {
-                const: "GovernmentOrganization"
-              }
-            }
-          },
-          then: {
-            properties: {
-              "@id": {
-                pattern: "^urn:kr:govcode:\\d{7}$"
-              }
-            }
-          }
-        },
-        {
-          if: {
-            properties: {
-              "@type": {
-                const: "Corporation"
-              }
-            }
-          },
-          then: {
-            properties: {
-              "@id": {
-                pattern: "^urn:kr:(crn:\\d{13}|brn:\\d{10})$"
-              }
-            }
-          }
-        },
-        {
-          if: {
-            properties: {
-              "@type": {
-                const: "Organization"
-              }
-            }
-          },
-          then: {
-            properties: {
-              "@id": {
-                pattern: "^urn:(kr:npo:\\d{10}|uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-              }
-            }
-          }
-        },
-        {
-          if: {
-            properties: {
-              "@type": {
-                const: "SoftwareApplication"
-              }
-            }
-          },
-          then: {
-            properties: {
-              "@id": {
-                pattern: "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$",
-                description: "\uBAA8\uB378\uC744 \uC2DD\uBCC4\uD558\uB294 \uB2E8\uC77C URN (\uC608: urn:model:openai:gpt-4o, urn:model:google:gemini-1.5-pro)"
-              }
-            }
-          }
-        }
-      ]
+      additionalProperties: false
     }
   }
 };
@@ -381,6 +426,23 @@ ${error}`);
 }
 
 // src/lib/frontmatter.ts
+var FIRST_CLASS_FIELDS = /* @__PURE__ */ new Set([
+  "about_title",
+  "about_creator",
+  "article_title",
+  "article_byline",
+  "language",
+  "keywords",
+  "image",
+  "source_url",
+  "others"
+]);
+var FRONTMATTER_SEARCH_LIMIT = 5e3;
+function toStringArray(value) {
+  if (value === void 0 || value === null) return [];
+  if (Array.isArray(value)) return value.map(String);
+  return [String(value)];
+}
 function parseFrontmatter(markdownOrYaml, body) {
   let yamlBlock = "";
   let content = "";
@@ -388,39 +450,46 @@ function parseFrontmatter(markdownOrYaml, body) {
     yamlBlock = markdownOrYaml;
     content = body;
   } else {
+    const searchArea = markdownOrYaml.slice(0, FRONTMATTER_SEARCH_LIMIT);
     const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
-    const match = markdownOrYaml.match(frontmatterRegex);
+    const match = searchArea.match(frontmatterRegex);
     if (match) {
       yamlBlock = match[1];
-      content = markdownOrYaml.replace(frontmatterRegex, "").trimStart();
+      content = markdownOrYaml.slice(match[0].length).trimStart();
     } else {
       content = markdownOrYaml;
     }
   }
-  const data = { title: "", keywords: [] };
+  const data = {};
   let others = [];
   if (yamlBlock.trim()) {
     const rawData = import_yaml.default.parse(yamlBlock) || {};
-    if (rawData.title !== void 0) data.title = String(rawData.title);
-    if (rawData.keywords !== void 0) {
-      data.keywords = Array.isArray(rawData.keywords) ? rawData.keywords.map(String) : [String(rawData.keywords)];
+    if (rawData.about_title !== void 0) data.about_title = String(rawData.about_title);
+    if (rawData.about_creator !== void 0) data.about_creator = String(rawData.about_creator);
+    if (rawData.article_title !== void 0) data.article_title = String(rawData.article_title);
+    if (rawData.article_byline !== void 0) data.article_byline = String(rawData.article_byline);
+    if (rawData.language !== void 0) {
+      data.language = toStringArray(rawData.language);
     }
-    if (rawData.byline !== void 0) {
-      data.byline = Array.isArray(rawData.byline) ? rawData.byline.map(String) : [String(rawData.byline)];
+    if (rawData.keywords !== void 0) {
+      data.keywords = toStringArray(rawData.keywords);
     }
     if (rawData.image !== void 0) {
-      data.image = Array.isArray(rawData.image) ? rawData.image.map(String) : [String(rawData.image)];
+      data.image = toStringArray(rawData.image);
     }
     if (rawData.source_url !== void 0) {
-      data.source_url = Array.isArray(rawData.source_url) ? rawData.source_url.map(String) : [String(rawData.source_url)];
+      data.source_url = toStringArray(rawData.source_url);
     }
     if (Array.isArray(rawData.others)) {
       others = [...rawData.others];
     }
     for (const [key, value] of Object.entries(rawData)) {
-      if (key !== "title" && key !== "keywords" && key !== "byline" && key !== "image" && key !== "source_url" && key !== "others") {
+      if (!FIRST_CLASS_FIELDS.has(key)) {
         others.push({ [key]: value });
       }
+    }
+    if (others.length > 0) {
+      data.others = others;
     }
     validateStrictFrontmatter(data);
   }
@@ -428,11 +497,13 @@ function parseFrontmatter(markdownOrYaml, body) {
 }
 function serializeFrontmatter(data, others, content) {
   validateStrictFrontmatter(data);
-  const yamlData = {
-    title: data.title,
-    keywords: data.keywords
-  };
-  if (data.byline !== void 0) yamlData.byline = data.byline;
+  const yamlData = {};
+  if (data.about_title !== void 0) yamlData.about_title = data.about_title;
+  if (data.about_creator !== void 0) yamlData.about_creator = data.about_creator;
+  if (data.article_title !== void 0) yamlData.article_title = data.article_title;
+  if (data.article_byline !== void 0) yamlData.article_byline = data.article_byline;
+  if (data.language !== void 0) yamlData.language = data.language;
+  if (data.keywords !== void 0) yamlData.keywords = data.keywords;
   if (data.image !== void 0) yamlData.image = data.image;
   if (data.source_url !== void 0) yamlData.source_url = data.source_url;
   if (others && others.length > 0) {

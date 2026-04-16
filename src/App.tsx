@@ -52,7 +52,7 @@ const EXAMPLES = {
         identifier: "urn:isbn:978-89-01-23456-7",
       },
     ],
-    text: '---\ntitle: "AI가 본 현대 사회"\nlanguage:\n  - "ko"\nbyline:\n  - "AI Assistant"\nkeywords:\n  - "사회학"\n  - "미래"\nothers:\n  - custom_rating: 5\n---\nAI 모델을 통한 현대 사회의 심층 분석 보고서입니다.',
+    text: '---\nabout_title: "현대 사회 (원서)"\nabout_creator: "김사회"\narticle_title: "AI가 본 현대 사회"\narticle_byline: "AI Assistant"\nlanguage:\n  - "ko"\nkeywords:\n  - "사회학"\n  - "미래"\nothers:\n  - custom_rating: 5\n---\nAI 모델을 통한 현대 사회의 심층 분석 보고서입니다.',
     creator: [
       {
         "@type": "SoftwareApplication" as const,
@@ -126,7 +126,7 @@ const EXAMPLES = {
         identifier: "urn:isbn:978-89-01-23456-7",
       },
     ],
-    text: '---\ntitle: "영속성 엔티티 예시"\nlanguage:\n  - "ko"\nbyline:\n  - "슬랫 출판사 검토팀"\nkeywords:\n  - "DB"\n  - "영속성"\n---\n데이터베이스에 영구적으로 저장된 객체입니다. datePublished와 @id 검증이 필요합니다.',
+    text: '---\nabout_title: "영속성 설계 교본"\nabout_creator: "박영속"\narticle_title: "영속성 엔티티 예시"\narticle_byline: "슬랫 출판사 검토팀"\nlanguage:\n  - "ko"\nkeywords:\n  - "DB"\n  - "영속성"\n---\n데이터베이스에 영구적으로 저장된 객체입니다. datePublished와 @id 검증이 필요합니다.',
     creator: [
       {
         "@type": "Corporation" as const,
@@ -306,10 +306,12 @@ function ValidatorSection({
   validationResult: any;
 }) {
   const [fmData, setFmData] = useState({
-    title: "",
+    about_title: "",
+    about_creator: "",
+    article_title: "",
+    article_byline: "",
     language: "",
     keywords: "",
-    byline: "",
     image: "",
     source_url: "",
   });
@@ -330,14 +332,16 @@ function ValidatorSection({
         try {
           const { data, others } = parseFrontmatter(parsed.text);
           setFmData({
-            title: data.title || "",
+            about_title: data.about_title || "",
+            about_creator: data.about_creator || "",
+            article_title: data.article_title || "",
+            article_byline: data.article_byline || "",
             language: Array.isArray(data.language)
               ? data.language.join(", ")
               : "",
             keywords: Array.isArray(data.keywords)
               ? data.keywords.join(", ")
               : "",
-            byline: Array.isArray(data.byline) ? data.byline.join(", ") : "",
             image: Array.isArray(data.image) ? data.image.join(", ") : "",
             source_url: Array.isArray(data.source_url)
               ? data.source_url.join(", ")
@@ -390,7 +394,10 @@ function ValidatorSection({
           const newFm = { ...fmData, ...updates.fm };
           const updatedFm: StrictFrontmatter = {};
 
-          if (newFm.title) updatedFm.title = newFm.title;
+          if (newFm.about_title) updatedFm.about_title = newFm.about_title;
+          if (newFm.about_creator) updatedFm.about_creator = newFm.about_creator;
+          if (newFm.article_title) updatedFm.article_title = newFm.article_title;
+          if (newFm.article_byline) updatedFm.article_byline = newFm.article_byline;
           if (newFm.language)
             updatedFm.language = newFm.language
               .split(",")
@@ -398,11 +405,6 @@ function ValidatorSection({
               .filter(Boolean);
           if (newFm.keywords)
             updatedFm.keywords = newFm.keywords
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          if (newFm.byline)
-            updatedFm.byline = newFm.byline
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean);
@@ -505,10 +507,28 @@ function ValidatorSection({
                   </h3>
                   <div className="space-y-3">
                     <Field
-                      label="Title"
+                      label="About Title (대상 저작물 제목)"
                       icon={<Type className="h-3 w-3" />}
-                      value={fmData.title}
-                      onChange={(v) => handleFormChange({ fm: { title: v } })}
+                      value={fmData.about_title}
+                      onChange={(v) => handleFormChange({ fm: { about_title: v } })}
+                    />
+                    <Field
+                      label="About Creator (대상 저작물 저자)"
+                      icon={<User className="h-3 w-3" />}
+                      value={fmData.about_creator}
+                      onChange={(v) => handleFormChange({ fm: { about_creator: v } })}
+                    />
+                    <Field
+                      label="Article Title (파생 문서 제목)"
+                      icon={<Type className="h-3 w-3" />}
+                      value={fmData.article_title}
+                      onChange={(v) => handleFormChange({ fm: { article_title: v } })}
+                    />
+                    <Field
+                      label="Article Byline (파생 문서 작성자 표기)"
+                      icon={<User className="h-3 w-3" />}
+                      value={fmData.article_byline}
+                      onChange={(v) => handleFormChange({ fm: { article_byline: v } })}
                     />
                     <Field
                       label="Language"
@@ -518,12 +538,6 @@ function ValidatorSection({
                         handleFormChange({ fm: { language: v } })
                       }
                       placeholder="ko, en"
-                    />
-                    <Field
-                      label="Byline"
-                      icon={<User className="h-3 w-3" />}
-                      value={fmData.byline}
-                      onChange={(v) => handleFormChange({ fm: { byline: v } })}
                     />
                     <Field
                       label="Keywords"

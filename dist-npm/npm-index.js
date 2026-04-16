@@ -165,15 +165,18 @@ var bro_v1_schema_default = {
       type: "string",
       minLength: 0,
       maxLength: 3e5,
-      description: "\uBC94\uC6A9 \uBB38\uC11C \uD14D\uC2A4\uD2B8. \uCD5C\uC0C1\uB2E8 YAML Frontmatter \uCEA1\uC290\uD654 \uD544\uC218. \uB370\uC774\uD130 \uC778\uC785 \uC2DC \uD504\uB860\uD2B8\uB9E4\uD130 \uB0B4\uBD80\uC758 \uC784\uC758\uC758 \uD0A4(Arbitrary Keys) \uD655\uC7A5\uC740 \uC804\uBA74 \uD5C8\uC6A9\uB428. \uB2E8, API \uBC18\uD658 \uBC0F \uC601\uC18D\uD654 \uAC1D\uCCB4 \uD45C\uCD9C \uC2DC \uD30C\uC774\uD504\uB77C\uC778\uC740 \uBC18\uB4DC\uC2DC \uB370\uC774\uD130\uB97C \uC815\uADDC\uD654\uD558\uC5EC 1\uAE09 \uD544\uB4DC\uC778 `title`(string), `byline`(string[]), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[])\uB9CC\uC744 \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uC9C1\uB82C\uD654\uD558\uACE0, \uAE30\uD0C0 \uBAA8\uB4E0 \uC794\uC5EC \uB3D9\uC801 \uB370\uC774\uD130\uB294 `others: [{key: value}, ...]` \uD615\uD0DC\uC758 \uBC30\uC5F4 \uAC1D\uCCB4\uB85C \uAC15\uC81C \uBB36\uC74C \uCC98\uB9AC\uD558\uC5EC \uB9C8\uD06C\uB2E4\uC6B4\uC744 \uC7AC\uC870\uB9BD\uD574\uC57C \uD568. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]",
+      description: "\uBC94\uC6A9 \uBB38\uC11C \uD14D\uC2A4\uD2B8. \uCD5C\uC0C1\uB2E8 YAML Frontmatter \uCEA1\uC290\uD654 \uD544\uC218. [\uD655\uC7A5\uC131 \uBAA8\uB378] \uB370\uC774\uD130 \uC778\uC785(Ingestion) \uC2DC \uD504\uB860\uD2B8\uB9E4\uD130 \uB0B4\uBD80\uC5D0 \uC784\uC758\uC758 \uD0A4(Arbitrary Keys)\uB97C \uC120\uC5B8\xB7\uD655\uC7A5\uD558\uB294 \uAC83\uC744 \uC804\uBA74 \uD5C8\uC6A9\uD568. \uC11C\uBC84\uB294 \uC778\uC785\uB41C \uD0A4\uB97C \uC6D0\uBCF8 \uADF8\uB300\uB85C \uC601\uC18D\uD654(Flat \uC800\uC7A5)\uD55C\uB2E4. \uB2E8, API \uBC18\uD658(Response) \uC2DC \uD30C\uC774\uD504\uB77C\uC778\uC740 **\uD604\uC7AC \uD30C\uC11C \uBC84\uC804\uC774 \uC815\uC758\uD558\uB294 1\uAE09 \uD544\uB4DC** \u2014 `about_title`(string), `about_creator`(string), `article_title`(string), `article_byline`(string), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[]) \u2014 \uB9CC\uC744 \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uC9C1\uB82C\uD654\uD558\uACE0, \uAE30\uD0C0 \uBAA8\uB4E0 \uC794\uC5EC \uB3D9\uC801 \uB370\uC774\uD130\uB294 `others: [{key: value}, ...]` \uD615\uD0DC\uC758 \uBC30\uC5F4 \uAC1D\uCCB4\uB85C \uAC15\uC81C \uBB36\uC74C \uCC98\uB9AC\uD558\uC5EC \uB9C8\uD06C\uB2E4\uC6B4\uC744 \uC7AC\uC870\uB9BD\uD55C\uB2E4. \uCD94\uD6C4 \uD2B9\uC815 \uB3D9\uC801 \uD0A4\uAC00 1\uAE09 \uAC1D\uCCB4\uB85C \uC2B9\uACA9\uB418\uBA74 \uD30C\uC11C \uBC84\uC804\uC744 \uC5C5\uB370\uC774\uD2B8\uD558\uC5EC \uD574\uB2F9 \uD0A4\uB97C others\uAC00 \uC544\uB2CC \uCD5C\uC0C1\uC704 \uB178\uB4DC\uC5D0 \uCD9C\uB825\uD55C\uB2E4. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]",
       "x-frontmatter-schema": {
         $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
         properties: {
-          title: { type: "string" },
-          byline: {
-            type: "array",
-            items: { type: "string" }
+          about_title: { type: "string" },
+          about_creator: {
+            type: "string"
+          },
+          article_title: { type: "string" },
+          article_byline: {
+            type: "string"
           },
           language: {
             type: "array",
@@ -181,20 +184,26 @@ var bro_v1_schema_default = {
               type: "string",
               pattern: "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)?$"
             },
-            minItems: 1,
+            minItems: 0,
             uniqueItems: true
           },
           keywords: {
             type: "array",
-            items: { type: "string" }
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
           },
           image: {
             type: "array",
-            items: { type: "string" }
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
           },
           source_url: {
             type: "array",
-            items: { type: "string" }
+            items: { type: "string" },
+            minItems: 0,
+            uniqueItems: true
           },
           others: {
             type: "array",
@@ -341,7 +350,10 @@ import * as v2 from "valibot";
 // src/lib/schema-types.ts
 import * as v from "valibot";
 var StrictFrontmatterSchema = v.strictObject({
-  title: v.optional(v.string("Title must be a string.")),
+  about_title: v.optional(v.string("about_title must be a string.")),
+  about_creator: v.optional(v.string("about_creator must be a string.")),
+  article_title: v.optional(v.string("article_title must be a string.")),
+  article_byline: v.optional(v.string("article_byline must be a string.")),
   language: v.optional(
     v.array(
       v.pipe(
@@ -352,7 +364,6 @@ var StrictFrontmatterSchema = v.strictObject({
     )
   ),
   keywords: v.optional(v.array(v.string("Keywords must be an array of strings."))),
-  byline: v.optional(v.array(v.string("Byline must be an array of strings."))),
   image: v.optional(v.array(v.string("Image must be an array of strings."))),
   source_url: v.optional(v.array(v.string("Source URL must be an array of strings."))),
   others: v.optional(
@@ -444,10 +455,12 @@ ${error}`);
 // src/lib/frontmatter.ts
 import yaml from "yaml";
 var FIRST_CLASS_FIELDS = /* @__PURE__ */ new Set([
-  "title",
+  "about_title",
+  "about_creator",
+  "article_title",
+  "article_byline",
   "language",
   "keywords",
-  "byline",
   "image",
   "source_url",
   "others"
@@ -479,15 +492,15 @@ function parseFrontmatter(markdownOrYaml, body) {
   let others = [];
   if (yamlBlock.trim()) {
     const rawData = yaml.parse(yamlBlock) || {};
-    if (rawData.title !== void 0) data.title = String(rawData.title);
+    if (rawData.about_title !== void 0) data.about_title = String(rawData.about_title);
+    if (rawData.about_creator !== void 0) data.about_creator = String(rawData.about_creator);
+    if (rawData.article_title !== void 0) data.article_title = String(rawData.article_title);
+    if (rawData.article_byline !== void 0) data.article_byline = String(rawData.article_byline);
     if (rawData.language !== void 0) {
       data.language = toStringArray(rawData.language);
     }
     if (rawData.keywords !== void 0) {
       data.keywords = toStringArray(rawData.keywords);
-    }
-    if (rawData.byline !== void 0) {
-      data.byline = toStringArray(rawData.byline);
     }
     if (rawData.image !== void 0) {
       data.image = toStringArray(rawData.image);
@@ -513,10 +526,12 @@ function parseFrontmatter(markdownOrYaml, body) {
 function serializeFrontmatter(data, others, content) {
   validateStrictFrontmatter(data);
   const yamlData = {};
-  if (data.title !== void 0) yamlData.title = data.title;
+  if (data.about_title !== void 0) yamlData.about_title = data.about_title;
+  if (data.about_creator !== void 0) yamlData.about_creator = data.about_creator;
+  if (data.article_title !== void 0) yamlData.article_title = data.article_title;
+  if (data.article_byline !== void 0) yamlData.article_byline = data.article_byline;
   if (data.language !== void 0) yamlData.language = data.language;
   if (data.keywords !== void 0) yamlData.keywords = data.keywords;
-  if (data.byline !== void 0) yamlData.byline = data.byline;
   if (data.image !== void 0) yamlData.image = data.image;
   if (data.source_url !== void 0) yamlData.source_url = data.source_url;
   if (others && others.length > 0) {

@@ -59,7 +59,7 @@ export type UrnIdentifier =
     };
 export type UrnIdentifier1 = string;
 /**
- * 범용 문서 텍스트. 최상단 YAML Frontmatter 캡슐화 필수. 데이터 인입 시 프론트매터 내부의 임의의 키(Arbitrary Keys) 확장은 전면 허용됨. 단, API 반환 및 영속화 객체 표출 시 파이프라인은 반드시 데이터를 정규화하여 1급 필드인 `title`(string), `byline`(string[]), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[])만을 최상위 노드에 직렬화하고, 기타 모든 잔여 동적 데이터는 `others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음 처리하여 마크다운을 재조립해야 함. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]
+ * 범용 문서 텍스트. 최상단 YAML Frontmatter 캡슐화 필수. [확장성 모델] 데이터 인입(Ingestion) 시 프론트매터 내부에 임의의 키(Arbitrary Keys)를 선언·확장하는 것을 전면 허용함. 서버는 인입된 키를 원본 그대로 영속화(Flat 저장)한다. 단, API 반환(Response) 시 파이프라인은 **현재 파서 버전이 정의하는 1급 필드** — `about_title`(string), `about_creator`(string), `article_title`(string), `article_byline`(string), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[]) — 만을 최상위 노드에 직렬화하고, 기타 모든 잔여 동적 데이터는 `others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음 처리하여 마크다운을 재조립한다. 추후 특정 동적 키가 1급 객체로 승격되면 파서 버전을 업데이트하여 해당 키를 others가 아닌 최상위 노드에 출력한다. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]
  */
 export type BoundedText = string;
 

@@ -5,7 +5,10 @@ import * as v from 'valibot';
 // JSON 스키마의 "required": [] 에 따라 모든 필드가 optional입니다.
 // additionalProperties: false 이므로 strictObject 사용.
 export const StrictFrontmatterSchema = v.strictObject({
-  title: v.optional(v.string('Title must be a string.')),
+  about_title: v.optional(v.string('about_title must be a string.')),
+  about_creator: v.optional(v.string('about_creator must be a string.')),
+  article_title: v.optional(v.string('article_title must be a string.')),
+  article_byline: v.optional(v.string('article_byline must be a string.')),
   language: v.optional(
     v.array(
       v.pipe(
@@ -16,7 +19,6 @@ export const StrictFrontmatterSchema = v.strictObject({
     )
   ),
   keywords: v.optional(v.array(v.string('Keywords must be an array of strings.'))),
-  byline: v.optional(v.array(v.string('Byline must be an array of strings.'))),
   image: v.optional(v.array(v.string('Image must be an array of strings.'))),
   source_url: v.optional(v.array(v.string('Source URL must be an array of strings.'))),
   others: v.optional(
