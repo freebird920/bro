@@ -1,287 +1,100 @@
-# Bibliographic Reaction Object (BRO) Schema v1
+# Bibliographic Reaction Object (BRO) Schema v1.0
 
-본 문서는 `https://schema.slat.or.kr/bro/v1/schema.json`에 정의된 **Bibliographic Reaction Object (BRO, 서지 반응정보 객체)** 의 아키텍처, 제약 조건 및 데이터 처리 파이프라인에 대한 심층 기술 명세입니다. BRO 스키마는 도서 및 비정형 서지 파생 데이터에 대한 메타데이터 규칙입니다.원본 데이터에 대한 리뷰, 분석, 비평, 요약, 감상 등의 파생 데이터를 일관성 있고 독립적인 엔티티로 구조화합니다.
+본 문서는 `https://schema.slat.or.kr/bro/v1.0/schema.json`에 정의된 **Bibliographic Reaction Object (BRO, 서지 반응정보 객체)** 의 아키텍처, 제약 조건 및 데이터 처리 파이프라인에 대한 심층 기술 명세입니다. BRO 스키마는 도서 및 비정형 서지 파생 데이터에 대한 메타데이터 규칙으로, 원본 데이터에 대한 리뷰, 분석, 비평, 요약, 감상 등의 파생 데이터를 일관성 있고 독립적인 JSON-LD 네이티브 엔티티로 구조화합니다.
 
 ---
 
-## 1. 최상위 라우팅 아키텍처 (Top-Level Routing)
+## 1. 아키텍처 원칙 (Architecture Principles)
 
-BRO 스키마는 단일 목적의 객체가 아니며, 진입점의 `@type` 필드에 따라 3개의 서로 다른 에그리거트 루트 중 하나(`oneOf`)로 분기 처리됩니다. 본 스키마는 시스템 쓰기(Write/Command) 전용 원시 모델이며, 클라이언트 조회용 내포(Embedding) 트리 변환은 미들웨어 도메인 계층의 책임으로 위임합니다.
+- **JSON-LD 네이티브 설계:**
+- **참조 무결성과 객체 내포 금지:** 하위/연관 객체를 내부에 직접 내포(Embedding)하는 것을 금지하며, 오직 타겟 자원의 `@id` 포인터만 저장하여 데이터 정규화를 강제합니다(CQRS 쓰기 전용 모델).
+- **불변성 (Immutability) 및 버전 관리:** 최초 생성 후 객체의 `@id`는 영구 불변(Immutable)입니다. 객체가 수정되는 경우, 반드시 `dateModified` 타임스탬프를 갱신하고 선택적으로 낙관적 락(Optimistic Locking)을 위한 `version` 식별자를 증가시킵니다.
+
+## 2. 최상위 라우팅 엔티티 (Top-Level Routing)
+
+BRO 스키마는 단일 목적의 객체가 아니며, 진입점의 `@type` 필드에 따라 3개의 서로 다른 에그리거트 루트 중 하나(`oneOf`)로 분기 처리됩니다.
 
 1.  **`BroItemList` (`@type: "ItemList"`)**
     - **목적:** 다중 타겟 문서 큐레이션을 위한 영속적 컨테이너 엔티티입니다.
     - **특징:** `itemListElement`는 오직 `@id`(URN UUID) 식별자 참조만 허용하며, 문서 객체 전체의 내포(Embedding)는 스키마 레벨에서 엄격히 금지됩니다.
 2.  **`BroArticle` (`@type: "Article"`)**
-    - **목적:** 단일 코어 문서(Article) 처리를 위한 쓰기/영속성 스키마입니다.
-    - **특징:** 파생 문서(Abstract 등)와의 결합은 외부 참조(`@id`)로만 이뤄지며, `about` 배열을 통해 원본 서지 엔티티를 식별합니다.
+    - **목적:** 단일 코어 문서(서평, 비평, 반응문서 등) 처리를 위한 쓰기/영속성 스키마입니다.
+    - **특징:** 파생 요약본(Abstract)과의 결합은 외부 참조(`@id`)로만 이뤄지며, `about` 배열을 통해 원본 서지 엔티티를 식별합니다. 기존 프론트매터 데이터(`aboutTitle`, `articleByline`, `inLanguage`, `keywords` 등)를 순수 JSON의 1급 속성으로 보유합니다.
 3.  **`BroAbstract` (`@type: "CreativeWork"`)**
-    - **목적:** 단일 요약본(Abstract) 처리를 위한 원시 스키마입니다.
-    - **특징:** `isBasedOn` 배열을 통해 원본 엔티티(Article 또는 CreativeWork)를 역참조합니다.
+    - **목적:** 기계(LLM)나 인간 작업자에 의해 작성된 고밀도 요약본(Abstract) 처리를 위한 원시 스키마입니다.
+    - **특징:** `isBasedOn` 배열을 통해 요약의 기반이 되는 원본 엔티티(Article 또는 도서)를 역참조합니다.
 
 ---
 
-## 2. 핵심 속성 (Core Properties)
+## 3. 핵심 속성 (Core Properties)
 
-모든 Article 기반 객체가 상속받는 핵심 뼈대 데이터 구조(`articleBaseProperties`)입니다. `@context`는 `https://schema.org`, `@type`은 `Article`로 고정됩니다.
+모든 데이터 엔티티가 상호 운용성을 위해 공유하는 핵심 필드 구조입니다. `@context`는 `https://schema.org` 규격을 준수합니다.
 
-### 2.1. `about` (타겟 서지 엔티티 배열)
+### 3.1. 식별 및 생명주기 제어 속성
 
-파생 문서가 대상으로 하는 원본 도서(서지 엔티티) 배열입니다.
+- **`@id` (URN Identifier):** 객체의 식별자. 파생문서와 작성자는 `urn:uuid:` 형식 등을 갖추어야 합니다.
+- **`dateCreated` (시간):** 엔티티 최초 생성 타임스탬프(ISO 8601).
+- **`dateModified` (시간):** 객체 내용 변경 시 갱신되는 갱신 타임스탬프.
+- **`version` (버전 해시/순서):** 데이터 변경 이력을 트래킹하기 위한 리비전 넘버.
 
-- 단권, 다권본 세트, 동일 저작물의 이기종 판본(개정판, e-book 등 여러 ISBN)을 무제한으로 바인딩할 수 있습니다.
-- 단일 도서 타겟팅 시에도 **반드시 원소가 최소 1개인 배열(`Array`) 형태**로 인입되어야 합니다.
-- 내부 객체 구조: `@type: "CreativeWork"` 지정 및 URN 형태(`urn:isbn:`, `urn:doi:`, `urn:uci:`, `urn:kolis:`, `urn:uuid:` 등)의 `identifier` 속성을 필수로 가져야 합니다.
+### 3.2. 1급 메타데이터 (1st-class Metadata)
 
-### 2.2. `creator` (작성 주체 배열)
+이전 세대의 프론트매터 캡슐화에서 해방되어, 스키마 레벨에서 직접 쿼리 및 인덱싱 가능한 1급 속성입니다.
 
-해당 파생 문서나 요약본을 생성한 주체의 배열입니다. 기계(LLM)와 인간 작업자의 공동 작업 등 복수 주체의 명시 및 이력 추적이 가능합니다.
+- **`about` / `isBasedOn`:** 타겟이 되는 원본 객체의 식별자(`identifier`) 배열. (원소가 최소 1개 이상 필수)
+- **`text`:** 순수 본문 텍스트 (마크다운 포맷).
+- **`inLanguage`:** BCP 47 언어 코드 배열 (`["ko", "en"]` 등).
+- **`keywords`:** 분류용 핵심어 목록.
+- **`image` / `citation`:** 연관 이미지 링크 및 참고 문헌 URN/URL 배열.
 
-> ⚠️ **주의:** 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와는 엄격히 분리된 도메인입니다. (자세한 식별자 규격은 [6. 작성자 식별 구조](#6-작성자-식별-구조-creatorroot) 참고)
+### 3.3. 동적 데이터 확장 (`additionalProperty`)
 
-### 2.3. `dateCreated` (최초 생성 타임스탬프)
-
-파생 문서 엔티티의 최초 생성 타임스탬프(ISO 8601 / RFC 3339 준수)입니다.
-
-- **불변성 규칙(Immutability):** 시스템 아키텍처 상 데이터 갱신(Update)은 전면 금지됩니다. 수정 요구 발생 시, 기존 객체를 논리적 삭제(Soft Delete) 또는 아카이빙하고 신규 타임스탬프를 획득한 새 객체로 대체하여 멱등성을 보장해야 합니다.
-- _KOMARC 매핑:_ 연동 시 YYYYMMDD로 다운캐스팅되어 `552 ▾k` 서브필드에 개시일자로 매핑됩니다.
-
----
-
-## 3. ⚠️ YAML Frontmatter 및 마크다운(`text`) 가이드
-
-`text` 필드는 범용 문서 텍스트(Markdown)를 저장하며, 문자열 길이는 0 ~ 300,000자로 제한됩니다. 본문 데이터는 **최상단에 YAML Frontmatter 캡슐화가 필수적으로 요구됩니다.** 이 규칙은 `BroArticle`과 `BroAbstract` 양쪽 모두의 `text` 필드에 **완전히 동일하게** 적용됩니다.
-
-### 3.1. Frontmatter 1급 필드 명세
-
-프론트매터의 1급 필드는 **현재 파서 버전**이 인식하는 핵심 메타데이터입니다. API 반환(Response) 시 최상위 노드에 직렬화됩니다.
-
-- **`about_title` (문자열):** 파생 문서가 대상으로 하는 **원본 저작물의 제목**입니다.
-- **`about_creator` (문자열):** 파생 문서가 대상으로 하는 **원본 저작물의 저자**입니다.
-- **`article_title` (문자열):** **파생 문서(Article) 자체의 제목**입니다. 서평 제목, 요약 제목 등이 이에 해당합니다.
-- **`article_byline` (문자열):** 파생 문서의 작성자 표기(Byline)입니다. 시스템은 기본적으로 개인정보 보호를 위해 서버에서 개인의 실명을 자동 출력하지 않습니다. 따라서 **출력 데이터에 명시적인 작성자 표기가 반드시 필요하다고 판단되는 다음과 같은 경우**에 이 필드를 활용합니다:
-  - 원작자가 개인이며, 원작자의 라이선스 사용 허락 조건이 '저작자 표시(BY)'를 요구하는 경우
-  - 원작자가 자신의 이름 표기를 명시적으로 요구한 경우
-  - 공개된 정보 중 원작자의 권위나 신원 등이 정보의 신뢰성에 특별히 중요한 의미를 갖는 경우
-  - 작성자의 직위, 소속 등을 함께 포함하여 서술해야 하는 경우 (예: `"김교수 - 안드로메다대학 명예교수"`)
-  - 블로그 등에서 원작자가 자신의 가명(닉네임, 별명) 등을 사용하는 경우
-- **`language` (문자열 배열):** BCP 47 / ISO 639 언어 코드 목록입니다. (예: `["ko", "en"]`)
-- **`keywords` (문자열 배열):** 문서를 분류하거나 검색에 사용될 핵심어 목록입니다.
-- **`image` (문자열 배열):** 문서와 관련된 주요 이미지 URL 목록입니다. 본문 전체가 이미지로 구성된 경우 등에 활용할 수 있습니다.
-- **`source_url` (문자열 배열):** 파생 문서가 참고하거나 기반으로 한 원문의 링크가 존재하는 경우 해당 URL을 기재합니다.
-- **`others` (객체 배열):** 위 1급 필드에 해당하지 않는 나머지 모든 사용자 정의 메타데이터가 모이는 공간입니다. (§3.4 참고)
-
-**[참고] Frontmatter 정규화 구조 JSON 스키마 표현**
-이러한 YAML 구조를 JSON 스키마 규격으로 표현하면 다음과 같습니다. (API 반환 시 정규화된 형태 기준)
+도서관이나 서비스별로 파편화된 커스텀 메타데이터(예: 평점, 완독 여부, 추천 연령 등)는 스키마를 오염시키지 않고 Schema.org 표준의 `PropertyValue` 배열 형태인 `additionalProperty`로 수용합니다. 이를 통해 NoSQL이나 RDB의 JSON 컬럼에서 정형화된 쿼리가 가능합니다.
 
 ```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "about_title": { "type": "string" },
-    "about_creator": { "type": "string" },
-    "article_title": { "type": "string" },
-    "article_byline": { "type": "string" },
-    "language": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)?$" },
-      "minItems": 0,
-      "uniqueItems": true
-    },
-    "keywords": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 0,
-      "uniqueItems": true
-    },
-    "image": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 0,
-      "uniqueItems": true
-    },
-    "source_url": {
-      "type": "array",
-      "items": { "type": "string" },
-      "minItems": 0,
-      "uniqueItems": true
-    },
-    "others": {
-      "type": "array",
-      "items": { "type": "object", "additionalProperties": true }
-    }
-  },
-  "additionalProperties": false,
-  "required": []
-}
+"additionalProperty": [
+  { "@type": "PropertyValue", "name": "custom_rating", "value": 5 },
+  { "@type": "PropertyValue", "name": "read_status", "value": "completed" }
+]
 ```
 
-### 3.2. 데이터 인입 (Ingestion) 시의 유연성
-
-클라이언트가 데이터를 생성하고 서버로 인입(Ingestion)할 때, 프론트매터 내부에 **임의의 키(Arbitrary Keys)를 선언하고 확장하는 것이 전면 허용**됩니다. 사용자는 마치 인터페이스를 확장하듯 자유롭게 커스텀 필드를 추가할 수 있습니다.
-
-```typescript
-// 사용자는 1급 필드 외에도 커스텀 필드를 자유롭게 추가할 수 있다
-interface MYBLOGBOOK extends BroFrontmatter {
-  custom_rating: number;
-  read_status: string;
-  recommended_age: string;
-}
-```
-
-이때 데이터는 `others` 노드로 묶지 않고 **평탄화(Flat)된 구조**로 전송하며, 서버도 원본 그대로 저장합니다.
-
-```yaml
 ---
-about_title: "노인과 바다"
-about_creator: "어니스트 헤밍웨이"
-article_title: "헤밍웨이의 바다, 그리고 불굴의 의지"
-article_byline: "홍길동"
-language: ["ko"]
-keywords: ["헤밍웨이", "고전", "바다", "노인과바다"]
-image: ["https://example.com/cover.jpg"]
-source_url: ["https://example.com/reviews/1234"]
-custom_rating: 5
-read_status: "completed"
-recommended_age: "15+"
----
-# 리뷰 본문
-노인과 바다는 단순한 어부의 이야기가 아니라...
-```
 
-### 3.3. 데이터 영속화(Persistence) 및 반환 (API Response)
+## 4. 작성자 식별 구조 (`creator`)
 
-**1. 데이터 영속화 (Persistence)**
-서버에서 데이터를 데이터베이스나 스토리지에 영속화할 때는 인입된 형태를 유지하여, 1급 필드와 잔여 동적 데이터를 **모두 최상위 계층에 평탄화(Flat)된 상태 그대로 저장**합니다.
+이 스키마에서 가장 엄격한 검증 로직이 적용된 블록입니다. 문서를 생성한 주체의 이름 또는 기관/시스템명을 정의하며, **`oneOf` 기반 태그드 유니온(Tagged Union)** 방식으로 구현됩니다. `@type` 필드가 discriminator 역할을 하며, 타입별로 허용되는 식별자 규격이 분리되어 있습니다.
 
-**2. API 반환 (Response) 및 정규화**
-API를 통해 클라이언트로 데이터를 반환할 때, 파이프라인은 데이터를 **정규화(Normalization)** 하여 마크다운 프론트매터를 재조립합니다. (파싱 정규식: `^---\n([\s\S]*?)\n---`)
-
-🌟 **1급 필드 (First-class Fields)**  
-현재 파서 버전이 인식하는 `about_title`, `about_creator`, `article_title`, `article_byline`, `language`, `keywords`, `image`, `source_url` 8가지 속성은 반환 시에도 최상위 계층(root node)에 유지됩니다.
-
-📦 **잔여 동적 데이터 강제 묶음 처리 (`others` 노드)**  
-반면, 1급 필드를 제외한 모든 사용자 정의 임의 키(Arbitrary Keys)들은 서버에서 클라이언트로 나갈 때 반드시 **`others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음(Grouping) 처리**되어 반환됩니다.
-
-**클라이언트 반환(API Response) 시의 정규화/역직렬화 예시:**
-
-```yaml
----
-about_title: "노인과 바다"
-about_creator: "어니스트 헤밍웨이"
-article_title: "헤밍웨이의 바다, 그리고 불굴의 의지"
-article_byline: "홍길동"
-language:
-  - "ko"
-keywords:
-  - "헤밍웨이"
-  - "고전"
-  - "바다"
-  - "노인과바다"
-image:
-  - "https://example.com/cover.jpg"
-source_url:
-  - "https://example.com/reviews/1234"
-others:
-  - custom_rating: 5
-  - read_status: "completed"
-  - recommended_age: "15+"
----
-# 리뷰 본문
-노인과 바다는 단순한 어부의 이야기가 아니라...
-```
-
-### 3.4. 파서 버전 기반 1급 필드 승격 모델
-
-Frontmatter의 확장성은 **파서 버전(Parser Version)** 에 의해 관리됩니다.
-
-1. **인입(Ingestion):** 사용자가 어떤 키든 자유롭게 프론트매터에 추가할 수 있습니다. 서버는 이를 원본 그대로 저장합니다.
-2. **반환(Response):** 현재 파서 버전이 정의하는 1급 필드만 최상위 노드에 출력되고, 나머지는 모두 `others` 배열로 묶여 반환됩니다.
-3. **승격(Promotion):** 특정 동적 키가 앞으로 1급 객체로 승격되면, 파서 버전을 업데이트하여 해당 키를 `others`가 아닌 최상위 노드에 직렬화합니다.
-
-예를 들어, 현재 `custom_rating`은 1급 필드가 아니므로 반환 시 `others`에 묶입니다. 하지만 추후 `custom_rating`이 1급 필드로 승격되면, 파서 버전이 올라가고 반환 시 `custom_rating`은 `keywords`처럼 최상위 노드에 직접 출력됩니다.
-
-> **매핑 프로토콜:** 생성된 `text` 데이터 세트의 규격 출처 식별자는 KOMARC `552 ▾h`에 `https://schema.slat.or.kr/bro/v1/schema.json`으로 기록되어야 하며, 페이로드 원문은 `552 ▾u` 서브필드의 URI 식별자를 통해 접근 가능해야 합니다.
+| `@type` (주체 성격)          | 상세 허용 구조 및 특징                                                                                          |
+| :--------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **`Person`**                 | 일반 개인 작성자. 파편화된 외부 데이터 스크래핑 인입에 대응하기 위해 `@id` 식별자를 예외적으로 생략 허용합니다. |
+| **`Anonymous`**              | 네트워크 인입 단말에서 작성자 추적에 실패할 경우 스키마 크래시를 방지하기 위한 Fallback용 익명 작성자.          |
+| **`GovernmentOrganization`** | 정부 및 공공기관 (범용 `uuid`, 대한민국 `kr:govcode` 등 `@id` 강제 요구).                                       |
+| **`Corporation`**            | 영리 법인 및 기업 (`kr:crn` 등 `@id` 강제 요구).                                                                |
+| **`Organization`**           | 비영리단체 및 기타 조직 (`kr:npo` 등 `@id` 강제 요구).                                                          |
+| **`SoftwareApplication`**    | 문서 생성 주체가 AI/LLM 파이프라인인 경우. `softwareVersion` 속성에 추가 표기 가능. (`@id` 강제 요구)           |
 
 ---
 
-## 4. 서브 컴포넌트: `BroAbstract` (요약 데이터)
+## 5. Linked Open Data (LOD) 및 서지 시스템 매핑 (Standard Mapping)
 
-문서 또는 도서에 대한 기계(LLM)나 사람에 의해 작성된 고밀도의 정형화된 상세 요약 텍스트(`text`)와 메타데이터 객체입니다. `@type`은 `"CreativeWork"`로 고정됩니다.
+BRO 페이로드는 자체 패키지에 동봉된 변환기를 사용하여 전통적인 핵심 서지 레코드 생태계와 매핑될 수 있습니다.
 
-- **`text` (YAML Frontmatter 동일 적용):** BroAbstract의 `text` 필드는 BroArticle의 `text`와 **완전히 동일한 YAML Frontmatter 캡슐화 규칙 및 2-Pass Validation**이 적용됩니다. (§3 참고)
-- **`isBasedOn` (원본 엔티티 식별자):** 요약이 기반하고 있는 원본 엔티티(`Article` 또는 `CreativeWork`)의 식별자 배열을 필수로 가집니다. 각 요소는 `terminalIdentifier` 구조(`@type` + `identifier` URN)를 따릅니다.
-- **`@id` 불변성:** 갱신 시 `updated` 필드 사용은 금지되며, 반드시 신규 `@id`와 새로운 `dateCreated`를 재발급하여 시스템의 멱등성을 보장해야 합니다.
-- **KOMARC 매핑:** 서지 시스템 연동 시 요약 텍스트는 `552 ▾o`의 '개체/속성 개요' 서브필드에 직접 주입됩니다.
+### 5.1. BIBFRAME 2.0 변환
 
----
+- `Article` → `["bf:Work", "bf:Review"]` (관계 엣지: `bf:reviewOf`)
+- `Abstract` → `["bf:Work", "bf:Summary"]` (관계 엣지: `bf:summaryOf`)
+- `creator` 객체들은 `bf:Contribution`을 생성하여 `bf:Person`, `bf:Organization`, `bf:Agent` 등으로 각각 다형성 매핑됩니다.
 
-## 5. 컬렉션 구조: `BroItemList`
+### 5.2. KORMARC 변환
 
-단일 도서에 종속되지 않는 큐레이션 데이터나 다중 게시물 반환 시 사용하는 배열 컨테이너입니다.
-
-- **구조:** `@type`은 `ItemList`. `@id`는 URN UUID 규격 적용. `name`은 길이 2~2000자 제약.
-- **`creator`:** 도서 목록 작성/생성 주체 배열. 다수 주체 바인딩 지원을 위해 배열로 입력.
-- **`itemListElement`:** 내부 아이템의 **`@id` 식별자(URN UUID) 참조 배열**. 객체 내포(Embedding)를 통한 에그리거트 간 데이터 결합은 스키마 레벨에서 금지되며, 검증(Validation) 단계에서 거부(Reject)됩니다. 모든 하위 엔티티 결합은 오직 `@id` 포인터로만 이루어져야 합니다.
-  - _특이사항:_ 개별 문서의 상세 데이터가 필요한 경우, 도메인 계층에서 `@id`를 기반으로 In-Memory Join을 수행하여 응답 DTO를 합성합니다.
+- 기본적으로 KORMARC **552 필드 (데이터 세트와 관련된 개체/속성 주기)** 에 매핑됩니다.
+- 타겟 식별자는 `020 ▾a` / `024 ▾a`에 바인딩되며, 데이터셋 출처 표시는 `552 ▾h`에 `https://schema.slat.or.kr/bro/v1.0/schema.json`으로 명시됩니다.
 
 ---
 
-## 6. 작성자 식별 구조: `creatorRoot`
+## 6. `@slat.or.kr/bro-schema` 로컬 라이브러리 사용 가이드
 
-이 스키마에서 가장 엄격한 검증 로직이 적용된 블록입니다. 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명을 정의하며, JSON Schema Draft 2020-12 표준인 **`oneOf` 기반 태그드 유니온(Tagged Union)** 방식으로 구현됩니다. `@type` 필드가 discriminator 역할을 하며, 타입별로 허용되는 `@id` URN 규격이 완전히 분리되어 속성 출혈(Property Bleeding)을 방지합니다. 패턴 불일치 시 스키마 유효성 검증은 즉시 하드 폴트(Hard Fault)를 발생시킵니다.
-
-| `@type` (주체 성격)          | `@id` URN 지원 규격                                                          | 설명                         |
-| :--------------------------- | :--------------------------------------------------------------------------- | :--------------------------- |
-| **`Person`**                 | 범용 `uuid`, `orcid`, `isni`                                                 | 일반 사용자 또는 개인 작성자 |
-| **`GovernmentOrganization`** | 범용 `uuid`, 대한민국 `kr:govcode` (7자리), `lei`, `isni`                    | 정부 및 공공기관             |
-| **`Corporation`**            | 범용 `uuid`, 법인/사업자 `kr:crn` (13자리), `kr:brn` (10자리), `lei`, `isni` | 영리 법인 및 기업            |
-| **`Organization`**           | 범용 `uuid`, 비영리 고유번호 `kr:npo` (10자리), `lei`, `isni`                | 비영리단체 및 기타 조직      |
-| **`SoftwareApplication`**    | `model` (예: `urn:model:google:gemini-2.0`)                                  | AI/LLM 모델 식별 단일 URN    |
-
-_참고:_ 생성 주체가 LLM인 경우 모델의 하위 버전을 `softwareVersion` 속성에 추가 표기할 수 있습니다. 모든 creator 서브타입의 `name` 필드는 `maxLength: 1000`으로 통일되어 있습니다.
-
----
-
-> 📄 **전체 JSON Schema 원문:** [`https://schema.slat.or.kr/bro/v1/schema.json`](https://schema.slat.or.kr/bro/v1/schema.json)
->
-> 스키마 전문은 위 URL에서 직접 조회하거나, 워커 엔드포인트 `GET /bro/v1/schema.json`을 통해 실시간으로 확인할 수 있습니다.
-
----
-
-## 7. 서지 표준 매핑 가이드 (Bibliographic Standard Mapping)
-
-BRO는 전통적인 핵심 서지 레코드(MARC, Dublin Core 등)가 아니라, 코어 서지에 부착/연동되는 **부가 파생 정보(Note/Extension)** 속성을 갖습니다.
-
-### 7.1. KOMARC (한국문헌자동화목록형식) 매핑
-
-기본적으로 KORMARC/KOMARC의 **552 필드 (데이터 세트와 관련된 개체/속성 주기)** 에 매핑됩니다.
-
-| BRO 속성 (Property)          | KOMARC 필드         | 매핑 상세 설명                                                                                                    |
-| :--------------------------- | :------------------ | :---------------------------------------------------------------------------------------------------------------- |
-| `about` 배열 내 `identifier` | `020 ▾a` / `024 ▾a` | URN 식별자 접두어에 따라 분기. (`urn:isbn:`은 `020`, 그 외는 `024` 필드 매핑)                                     |
-| `text` (본문)                | `552 ▾h`, `552 ▾u`  | `552 ▾h`에 `https://schema.slat.or.kr/bro/v1/schema.json` 명시. 원문은 `552 ▾u` URI 식별자를 통해 외부 해소 연결. |
-| `article.dateCreated`        | `552 ▾k`            | 최초 생성 타임스탬프 (YYYYMMDD 포맷 변환 후 **개시일자** 바인딩).                                                 |
-| `article.datePublished`      | `552 ▾k`            | 영속화/발행 일자 (YYYYMMDD 포맷 변환 후 **종료일자/유효일자** 바인딩).                                            |
-| `abstract.text`              | `552 ▾o`            | 작성된 구조화 요약 본문은 핵심 개요로서 **개체/속성 개요** 서브필드에 직접 주입.                                  |
-| `abstract.dateCreated`       | `552 ▾k`            | 요약 객체 생성일 (YYYYMMDD 매핑).                                                                                 |
-
-### 7.2. Dublin Core 매핑
-
-| BRO 속성 (Property)     | Dublin Core 요소                      | 매핑 상세 설명                                                           |
-| :---------------------- | :------------------------------------ | :----------------------------------------------------------------------- |
-| `@id` (UUID)            | `dc:identifier`                       | 파생 문서 엔티티 자체의 고유 식별자 (`urn:uuid:...`)                     |
-| `about` 내 `identifier` | `dc:relation` / `dc:source`           | 파생 문서가 종속된 원본 저작물을 가리키는 관계 식별자 (URN).             |
-| `creator`               | `dc:creator`                          | 파생 데이터를 생성한 주체(사람, 기관, AI)의 배열. 원본 도서 저자와 별개. |
-| `dateCreated`           | `dc:date` / `dcterms:created`         | 파생 데이터 최초 생성 일자.                                              |
-| `abstract.text`         | `dc:description` / `dcterms:abstract` | 도서에 대한 요약/개요.                                                   |
-| `text` (본문)           | `dc:description`                      | 서평, 비평, 파생문서 전체 (또는 원문 URI 링크 제공).                     |
-
----
-
-## 8. `@slat.or.kr/bro-schema` 라이브러리 사용 가이드
-
-[@slat.or.kr/bro-schema](https://www.npmjs.com/package/@slat.or.kr/bro-schema)는 BRO 스키마 정의, 유효성 검사 유틸리티, TypeScript 타이핑 및 마크다운 정규화 파서를 제공하는 공식 패키지입니다.
+본 패키지(`@slat.or.kr/bro-schema`)는 BRO 스키마 정의, JSON Schema 단일 패스 유효성 검증 체계, BIBFRAME 2.0 변환기 및 RAG 대응 렌더러를 공식 제공합니다.
 
 ### 📦 설치
 
@@ -293,11 +106,11 @@ pnpm add @slat.or.kr/bro-schema
 npm install @slat.or.kr/bro-schema
 ```
 
-### 💻 주요 사용법
+### 💻 패키지 활용법
 
-#### 1. 스키마 유효성 검사
+#### 1. 스키마 단일 검증 (Validation)
 
-`@cfworker/json-schema` 기반으로 BRO JSON 객체의 유효성을 검사합니다.
+JSON-LD 네이티브 아키텍처로 이전됨에 따라 기존 2-Pass(Valibot Frontmatter) 검증 파이프라인이 폐기되고 단일 패스 Validator로 단순화되었습니다.
 
 ```typescript
 import { validateBroSchema } from "@slat.or.kr/bro-schema";
@@ -305,70 +118,47 @@ import { validateBroSchema } from "@slat.or.kr/bro-schema";
 const payload = {
   "@context": "https://schema.org",
   "@type": "Article",
+  "@id": "urn:uuid:123e...",
+  dateCreated: "2026-04-16T12:00:00Z",
   about: [{ "@type": "CreativeWork", identifier: "urn:isbn:9788937460753" }],
-  creator: [
-    {
-      "@type": "Person",
-      "@id": "urn:uuid:123e4567-e89b-12d3-a456-426614174000",
-      name: "홍길동",
-    },
-  ],
-  text: "---\nabout_title: 리뷰 대상 도서\narticle_title: 리뷰\nlanguage:\n  - ko\n---\n매혹적인 책입니다.",
-  dateCreated: "2024-04-11T15:00:00Z",
+  creator: [{ "@type": "Person", name: "홍길동" }],
+  text: "매혹적인 책입니다.",
+  inLanguage: ["ko"],
+  additionalProperty: [{ "@type": "PropertyValue", name: "rating", value: 5 }],
 };
 
 const result = validateBroSchema(payload);
 if (result.valid) console.log("유효한 BRO 스키마입니다!");
 ```
 
-#### 2. 프런트매터 정규화 및 역직렬화 (Frontmatter Parsing)
+#### 2. BIBFRAME 2.0 JSON-LD 로의 양방향 연동
 
-YAML 프런트매터를 파싱하여 1급 필드(`about_title`, `article_title`, `keywords` 등)와 동적 번들(`others`)로 분리하고 안전하게 직렬화합니다.
+LOD 호환 생태계와의 연결을 위해 페이로드를 BIBFRAME 규격으로 On-the-fly 변환합니다.
 
 ```typescript
-import { parseFrontmatter, serializeFrontmatter } from "@slat.or.kr/bro-schema";
+import { convertBroToBibframe } from "@slat.or.kr/bro-schema";
 
-// API 반환 형태의 마크다운 문자열 예시 (others가 묶여 있는 상태)
-const markdownString = `---
-about_title: "노인과 바다"
-about_creator: "헤밍웨이"
-article_title: "도서 리뷰"
-article_byline: "홍길동"
-language:
-  - "ko"
-keywords:
-  - "소설"
-  - "고전"
-others:
-  - rating: 5
-  - readDate: "2024-04-11"
----
-# 리뷰 본문
-여기 제 리뷰가 있습니다...`;
-
-// 정규화 파싱
-const { data, others, content } = parseFrontmatter(markdownString);
-
-console.log(data.about_title); // "노인과 바다"
-console.log(data.article_title); // "도서 리뷰"
-console.log(data.keywords); // ["소설", "고전"]
-console.log(others); //[{ rating: 5 }, { readDate: "2024-04-11" }]
-console.log(content); // "# 리뷰 본문\n여기 제 리뷰가 있습니다..."
-
-// 마크다운 재조립 직렬화
-const reconstructedMarkdown = serializeFrontmatter(data, others, content);
+const bfPayload = convertBroToBibframe(payload);
+console.log(bfPayload["@type"]); // ["bf:Work", "bf:Review"]
 ```
 
-#### 3. KOMARC 변환 유틸리티
+#### 3. AI RAG (Retrieval-Augmented Generation) 마크다운 렌더러
 
-BRO 페이로드를 표준 KOMARC 필드 규격으로 손쉽게 변환합니다.
+LLM 벡터 DB 검색 이후 컨텍스트 주입 시, JSON 트리 모델보다 의미적 압축률이 뛰어난 "마크다운 기반 텍스트 + YAML 프론트매터" 포맷으로 BRO 객체를 합성해 반환합니다. (외부 의존성 없음)
 
 ```typescript
-import { convertBroToKomarc } from "@slat.or.kr/bro-schema";
+import { renderBroToMarkdown } from "@slat.or.kr/bro-schema";
 
-const komarcRecord = convertBroToKomarc(payload);
-console.log(JSON.stringify(komarcRecord, null, 2));
-// 020 (ISBN), 100/700 (저자 필드 무시), 552 (로컬 메타데이터 파생) 매핑 출력
+const ragContextStr = renderBroToMarkdown(payload);
+console.log(ragContextStr);
+// ---
+// id: urn:uuid:123e...
+// type: Article
+// inLanguage:
+//   - ko
+// ...
+// ---
+// 매혹적인 책입니다.
 ```
 
 ### 라이선스

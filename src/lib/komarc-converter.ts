@@ -1,5 +1,5 @@
 import type { 
-  BibliographicReactionObjectBRO, 
+  BibliographicReactionObjectBROV10 as BibliographicReactionObjectBRO, 
   BroArticle, 
   BroAbstract,
   BroItemList 

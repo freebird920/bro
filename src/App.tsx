@@ -35,16 +35,20 @@ import {
 
 import schema from "../worker/assets/bro-v1-schema.json";
 import readmeMarkdown from "../README.md?raw";
-import { parseFrontmatter, serializeFrontmatter } from "./lib/frontmatter";
 import { normalizePayload, normalizeUrnScheme } from "./lib/normalize";
-import type { StrictFrontmatter, DynamicField } from "./lib/schema-types";
 import { CREATOR_TYPES, type CreatorType } from "./lib/bro-types";
+import type { AdditionalPropertyArray } from "./validator/schema-types";
 import "./lib/githubmarkdown.css";
 
 const EXAMPLES = {
   AI_ARTICLE: {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440010",
+    name: "AI가 본 현대 사회",
+    aboutTitle: "현대 사회 (원서)",
+    aboutCreator: "김사회",
+    articleByline: "AI Assistant",
     dateCreated: "2026-04-12T12:00:00Z",
     about: [
       {
@@ -52,7 +56,9 @@ const EXAMPLES = {
         identifier: "urn:isbn:978-89-01-23456-7",
       },
     ],
-    text: '---\nabout_title: "현대 사회 (원서)"\nabout_creator: "김사회"\narticle_title: "AI가 본 현대 사회"\narticle_byline: "AI Assistant"\nlanguage:\n  - "ko"\nkeywords:\n  - "사회학"\n  - "미래"\nothers:\n  - custom_rating: 5\n---\nAI 모델을 통한 현대 사회의 심층 분석 보고서입니다.',
+    text: "AI 모델을 통한 현대 사회의 심층 분석 보고서입니다.",
+    inLanguage: ["ko"],
+    keywords: ["사회학", "미래"],
     creator: [
       {
         "@type": "SoftwareApplication" as const,
@@ -60,6 +66,9 @@ const EXAMPLES = {
         "@id": "urn:model:google:gemini-1.5-pro",
         softwareVersion: "1.5-pro",
       },
+    ],
+    additionalProperty: [
+      { "@type": "PropertyValue" as const, name: "custom_rating", value: 5 },
     ],
     abstract: [{ "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440001" }],
   },
@@ -75,6 +84,7 @@ const EXAMPLES = {
       },
     ],
     text: "현대 사회의 복잡성을 AI의 시각에서 간결하게 요약한 발췌본입니다.",
+    inLanguage: ["ko"],
     creator: [
       {
         "@type": "SoftwareApplication" as const,
@@ -83,11 +93,33 @@ const EXAMPLES = {
       },
     ],
   },
+  ANONYMOUS_ARTICLE: {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440077",
+    name: "익명 사용자의 리뷰",
+    aboutTitle: "노인과 바다",
+    aboutCreator: "어니스트 헤밍웨이",
+    dateCreated: "2026-04-15T09:00:00Z",
+    about: [
+      {
+        "@type": "CreativeWork" as const,
+        identifier: "urn:isbn:9788937460753",
+      },
+    ],
+    text: "추적 불가능한 익명 사용자의 감상문입니다.",
+    creator: [
+      {
+        "@type": "Anonymous" as const,
+      },
+    ],
+  },
   ITEM_LIST: {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440022",
     name: "2026학년도 분야별 추천사 목록",
+    dateCreated: "2026-04-12T12:00:00Z",
     creator: [
       {
         "@type": "Organization" as const,
@@ -100,33 +132,28 @@ const EXAMPLES = {
       { "@id": "urn:uuid:123e4567-e89b-12d3-a456-426614174001" },
     ],
   },
-  EMPTY_LIST: {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440033",
-    name: "비어있는 목록 (삭제 후 잔류)",
-    creator: [
-      {
-        "@type": "Person" as const,
-        name: "관리자",
-        "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440099",
-      },
-    ],
-    itemListElement: [],
-  },
   PERSISTED_ARTICLE: {
     "@context": "https://schema.org",
     "@type": "Article",
     "@id": "urn:uuid:123e4567-e89b-12d3-a456-426614174000",
+    name: "영속성 엔티티 예시",
+    aboutTitle: "영속성 설계 교본",
+    aboutCreator: "박영속",
+    articleByline: "슬랫 출판사 검토팀",
     dateCreated: "2026-04-12T12:00:00Z",
     datePublished: "2026-04-13T00:00:00Z",
+    dateModified: "2026-04-14T10:00:00Z",
+    version: 2,
     about: [
       {
         "@type": "CreativeWork" as const,
         identifier: "urn:isbn:978-89-01-23456-7",
       },
     ],
-    text: '---\nabout_title: "영속성 설계 교본"\nabout_creator: "박영속"\narticle_title: "영속성 엔티티 예시"\narticle_byline: "슬랫 출판사 검토팀"\nlanguage:\n  - "ko"\nkeywords:\n  - "DB"\n  - "영속성"\n---\n데이터베이스에 영구적으로 저장된 객체입니다. datePublished와 @id 검증이 필요합니다.',
+    text: "데이터베이스에 영구적으로 저장된 객체입니다. dateModified와 version으로 이력을 추적합니다.",
+    inLanguage: ["ko"],
+    keywords: ["DB", "영속성"],
+    citation: ["https://example.com/persistence-guide"],
     creator: [
       {
         "@type": "Corporation" as const,
@@ -145,7 +172,6 @@ export default function App() {
     valid: boolean;
     errors?: any[];
     syntaxError?: string;
-    frontmatterErrors?: any[];
   } | null>(null);
 
   const validator = useMemo(() => {
@@ -174,42 +200,12 @@ export default function App() {
       // 정규화된 결과를 JSON 에디터에도 반영
       setJsonInput(JSON.stringify(parsed, null, 2));
 
-      // 1차 검증: JSON Schema
+      // JSON Schema 단일 패스 검증 (YAML Frontmatter 2차 검증 폐기)
       const result = validator.validate(parsed);
       if (!result.valid) {
         setValidationResult({
           valid: false,
           errors: result.errors,
-        });
-        return;
-      }
-
-      // 2차 검증: Frontmatter (text 필드가 있는 경우)
-      const fmErrors: { location: string; error: string }[] = [];
-      const type = parsed["@type"];
-
-      const validateText = (text: unknown, path: string) => {
-        if (typeof text !== "string" || text.length === 0) return;
-        try {
-          parseFrontmatter(text);
-        } catch (e: any) {
-          fmErrors.push({ location: path, error: e.message });
-        }
-      };
-
-      if (type === "Article") {
-        validateText(parsed.text, "/text");
-      } else if (type === "CreativeWork" && "isBasedOn" in parsed) {
-        // BroAbstract — Article과 동일한 YAML Frontmatter 2차 검증 적용
-        validateText(parsed.text, "/text");
-      }
-      // [SCHEMA v1 개정] ItemList의 itemListElement는 @id 참조만 허용.
-      // text 필드가 존재하지 않으므로 Frontmatter 2차 검증 불필요.
-
-      if (fmErrors.length > 0) {
-        setValidationResult({
-          valid: false,
-          frontmatterErrors: fmErrors,
         });
         return;
       }
@@ -305,15 +301,15 @@ function ValidatorSection({
   handleValidate: () => void;
   validationResult: any;
 }) {
-  const [fmData, setFmData] = useState({
-    about_title: "",
-    about_creator: "",
-    article_title: "",
-    article_byline: "",
-    language: "",
+  const [metaData, setMetaData] = useState({
+    name: "",
+    aboutTitle: "",
+    aboutCreator: "",
+    articleByline: "",
+    inLanguage: "",
     keywords: "",
     image: "",
-    source_url: "",
+    citation: "",
   });
   const [creatorData, setCreatorData] = useState<{
     type: CreatorType;
@@ -321,36 +317,32 @@ function ValidatorSection({
     id: string;
     version: string;
   }>({ type: "Person", name: "", id: "", version: "" });
-  const [othersData, setOthersData] = useState<DynamicField[]>([]);
+  const [additionalProps, setAdditionalProps] = useState<AdditionalPropertyArray>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (isSyncing) return;
     try {
       const parsed = JSON.parse(jsonInput);
-      if (parsed["@type"] === "Article" && typeof parsed.text === "string") {
-        try {
-          const { data, others } = parseFrontmatter(parsed.text);
-          setFmData({
-            about_title: data.about_title || "",
-            about_creator: data.about_creator || "",
-            article_title: data.article_title || "",
-            article_byline: data.article_byline || "",
-            language: Array.isArray(data.language)
-              ? data.language.join(", ")
-              : "",
-            keywords: Array.isArray(data.keywords)
-              ? data.keywords.join(", ")
-              : "",
-            image: Array.isArray(data.image) ? data.image.join(", ") : "",
-            source_url: Array.isArray(data.source_url)
-              ? data.source_url.join(", ")
-              : "",
-          });
-          setOthersData(others);
-        } catch {
-          /* ignore parse errors for UI sync */
-        }
+      // JSON-LD 네이티브 1급 필드 동기화
+      if (parsed["@type"] === "Article") {
+        setMetaData({
+          name: parsed.name || "",
+          aboutTitle: parsed.aboutTitle || "",
+          aboutCreator: parsed.aboutCreator || "",
+          articleByline: parsed.articleByline || "",
+          inLanguage: Array.isArray(parsed.inLanguage)
+            ? parsed.inLanguage.join(", ")
+            : "",
+          keywords: Array.isArray(parsed.keywords)
+            ? parsed.keywords.join(", ")
+            : "",
+          image: Array.isArray(parsed.image) ? parsed.image.join(", ") : "",
+          citation: Array.isArray(parsed.citation)
+            ? parsed.citation.join(", ")
+            : "",
+        });
+        setAdditionalProps(parsed.additionalProperty || []);
       }
 
       const isArticleOrAbstract =
@@ -369,7 +361,7 @@ function ValidatorSection({
   }, [jsonInput]);
 
   const handleFormChange = (updates: {
-    fm?: Partial<typeof fmData>;
+    meta?: Partial<typeof metaData>;
     creator?: Partial<typeof creatorData>;
   }) => {
     setIsSyncing(true);
@@ -380,56 +372,43 @@ function ValidatorSection({
         parsed["@type"] === "CreativeWork" && "isBasedOn" in parsed;
 
       if (isArticleOrig || isAbstractOrig) {
-        if (isArticleOrig && updates.fm) {
-          let others: DynamicField[] = [];
-          let content = "";
-          try {
-            const result = parseFrontmatter(parsed.text || "");
-            others = result.others;
-            content = result.content;
-          } catch {
-            content = parsed.text || "";
-          }
+        // JSON-LD 네이티브 1급 속성을 직접 편집
+        if (isArticleOrig && updates.meta) {
+          const newMeta = { ...metaData, ...updates.meta };
 
-          const newFm = { ...fmData, ...updates.fm };
-          const updatedFm: StrictFrontmatter = {};
+          if (newMeta.name) parsed.name = newMeta.name;
+          else delete parsed.name;
+          if (newMeta.aboutTitle) parsed.aboutTitle = newMeta.aboutTitle;
+          else delete parsed.aboutTitle;
+          if (newMeta.aboutCreator) parsed.aboutCreator = newMeta.aboutCreator;
+          else delete parsed.aboutCreator;
+          if (newMeta.articleByline) parsed.articleByline = newMeta.articleByline;
+          else delete parsed.articleByline;
 
-          if (newFm.about_title) updatedFm.about_title = newFm.about_title;
-          if (newFm.about_creator) updatedFm.about_creator = newFm.about_creator;
-          if (newFm.article_title) updatedFm.article_title = newFm.article_title;
-          if (newFm.article_byline) updatedFm.article_byline = newFm.article_byline;
-          if (newFm.language)
-            updatedFm.language = newFm.language
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          if (newFm.keywords)
-            updatedFm.keywords = newFm.keywords
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          if (newFm.image)
-            updatedFm.image = newFm.image
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          if (newFm.source_url)
-            updatedFm.source_url = newFm.source_url
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
+          const toArr = (s: string) => s.split(",").map((v) => v.trim()).filter(Boolean);
+          const lang = toArr(newMeta.inLanguage);
+          if (lang.length > 0) parsed.inLanguage = lang;
+          else delete parsed.inLanguage;
+          const kw = toArr(newMeta.keywords);
+          if (kw.length > 0) parsed.keywords = kw;
+          else delete parsed.keywords;
+          const img = toArr(newMeta.image);
+          if (img.length > 0) parsed.image = img;
+          else delete parsed.image;
+          const cit = toArr(newMeta.citation);
+          if (cit.length > 0) parsed.citation = cit;
+          else delete parsed.citation;
 
-          parsed.text = serializeFrontmatter(updatedFm, others, content);
-          setFmData(newFm);
+          setMetaData(newMeta);
         }
 
         if (updates.creator) {
           const newCreator = { ...creatorData, ...updates.creator };
           const updatedCreator: Record<string, unknown> = {
             "@type": newCreator.type,
-            name: newCreator.name,
-            "@id": normalizeUrnScheme(newCreator.id), // 자동 소문자 정규화
           };
+          if (newCreator.name) updatedCreator.name = newCreator.name;
+          if (newCreator.id) updatedCreator["@id"] = normalizeUrnScheme(newCreator.id);
           if (newCreator.type === "SoftwareApplication" && newCreator.version) {
             updatedCreator.softwareVersion = newCreator.version;
           }
@@ -503,91 +482,86 @@ function ValidatorSection({
               {isArticle && (
                 <div className="space-y-5">
                   <h3 className="text-sm font-bold flex items-center gap-2 text-foreground uppercase tracking-wider">
-                    <Layout className="h-4 w-4" /> Frontmatter Metadata
+                    <Layout className="h-4 w-4" /> JSON-LD Metadata
                   </h3>
                   <div className="space-y-3">
                     <Field
+                      label="Name (파생 문서 제목)"
+                      icon={<Type className="h-3 w-3" />}
+                      value={metaData.name}
+                      onChange={(v) => handleFormChange({ meta: { name: v } })}
+                    />
+                    <Field
                       label="About Title (대상 저작물 제목)"
                       icon={<Type className="h-3 w-3" />}
-                      value={fmData.about_title}
-                      onChange={(v) => handleFormChange({ fm: { about_title: v } })}
+                      value={metaData.aboutTitle}
+                      onChange={(v) => handleFormChange({ meta: { aboutTitle: v } })}
                     />
                     <Field
                       label="About Creator (대상 저작물 저자)"
                       icon={<User className="h-3 w-3" />}
-                      value={fmData.about_creator}
-                      onChange={(v) => handleFormChange({ fm: { about_creator: v } })}
+                      value={metaData.aboutCreator}
+                      onChange={(v) => handleFormChange({ meta: { aboutCreator: v } })}
                     />
                     <Field
-                      label="Article Title (파생 문서 제목)"
-                      icon={<Type className="h-3 w-3" />}
-                      value={fmData.article_title}
-                      onChange={(v) => handleFormChange({ fm: { article_title: v } })}
-                    />
-                    <Field
-                      label="Article Byline (파생 문서 작성자 표기)"
+                      label="Article Byline (작성자 표기)"
                       icon={<User className="h-3 w-3" />}
-                      value={fmData.article_byline}
-                      onChange={(v) => handleFormChange({ fm: { article_byline: v } })}
+                      value={metaData.articleByline}
+                      onChange={(v) => handleFormChange({ meta: { articleByline: v } })}
                     />
                     <Field
-                      label="Language"
+                      label="inLanguage (BCP 47)"
                       icon={<Type className="h-3 w-3" />}
-                      value={fmData.language}
+                      value={metaData.inLanguage}
                       onChange={(v) =>
-                        handleFormChange({ fm: { language: v } })
+                        handleFormChange({ meta: { inLanguage: v } })
                       }
                       placeholder="ko, en"
                     />
                     <Field
                       label="Keywords"
                       icon={<Tag className="h-3 w-3" />}
-                      value={fmData.keywords}
+                      value={metaData.keywords}
                       onChange={(v) =>
-                        handleFormChange({ fm: { keywords: v } })
+                        handleFormChange({ meta: { keywords: v } })
                       }
                     />
                     <Field
                       label="Image URLs"
                       icon={<ImageIcon className="h-3 w-3" />}
-                      value={fmData.image}
-                      onChange={(v) => handleFormChange({ fm: { image: v } })}
+                      value={metaData.image}
+                      onChange={(v) => handleFormChange({ meta: { image: v } })}
                     />
                     <Field
-                      label="Source URLs"
+                      label="Citation URLs"
                       icon={<Link className="h-3 w-3" />}
-                      value={fmData.source_url}
+                      value={metaData.citation}
                       onChange={(v) =>
-                        handleFormChange({ fm: { source_url: v } })
+                        handleFormChange({ meta: { citation: v } })
                       }
                     />
                   </div>
 
-                  {/* Others 동적 필드 뷰어 */}
-                  {othersData.length > 0 && (
+                  {/* additionalProperty 뷰어 */}
+                  {additionalProps.length > 0 && (
                     <div className="mt-4 p-4 bg-muted/30 rounded-lg border space-y-2">
                       <h4 className="text-[11px] font-bold uppercase flex items-center gap-1.5 text-muted-foreground tracking-wider">
-                        <List className="h-3 w-3" /> Dynamic Fields (others)
+                        <List className="h-3 w-3" /> additionalProperty (PropertyValue)
                       </h4>
                       <div className="space-y-1">
-                        {othersData.map((item, i) => (
+                        {additionalProps.map((prop, i) => (
                           <div
                             key={i}
                             className="flex items-center justify-between text-xs py-1 border-b border-border/20 last:border-0"
                           >
-                            {Object.entries(item).map(([k, val]) => (
-                              <div
-                                key={k}
-                                className="flex items-center gap-2 w-full"
-                              >
-                                <span className="font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded text-[10px]">
-                                  {k}
-                                </span>
-                                <span className="text-foreground text-[11px] truncate">
-                                  {JSON.stringify(val)}
-                                </span>
-                              </div>
-                            ))}
+                            <div className="flex items-center gap-2 w-full">
+                              <span className="font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded text-[10px]">
+                                {prop.name}
+                              </span>
+                              <span className="text-foreground text-[11px] truncate">
+                                {JSON.stringify(prop.value)}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -750,7 +724,7 @@ function ValidatorSection({
           onClick={handleValidate}
           className="w-full h-14 text-lg font-bold shadow-sm rounded-xl"
         >
-          Validate Payload (2-Pass)
+          Validate Payload
         </Button>
 
         {validationResult && (
@@ -760,11 +734,11 @@ function ValidatorSection({
                 <CheckCircle2 className="h-7 w-7 shrink-0" />
                 <div>
                   <AlertTitle className="text-xl font-bold m-0">
-                    Target Schema Validated (2-Pass)
+                    Target Schema Validated
                   </AlertTitle>
                   <AlertDescription className="text-base mt-1">
-                    Successfully validated against BRO v1 specification
-                    constraints including Frontmatter integrity.
+                    Successfully validated against BRO v1.0 JSON-LD native
+                    specification.
                   </AlertDescription>
                 </div>
               </Alert>
@@ -773,9 +747,7 @@ function ValidatorSection({
                 <div className="flex gap-4 mb-4 items-center">
                   <AlertCircle className="h-7 w-7 shrink-0" />
                   <AlertTitle className="text-xl font-bold m-0">
-                    {validationResult.frontmatterErrors
-                      ? "Frontmatter Validation Fault"
-                      : "Validation Fault Detected"}
+                    Validation Fault Detected
                   </AlertTitle>
                 </div>
                 <AlertDescription className="mt-4 break-all">
@@ -801,19 +773,7 @@ function ValidatorSection({
                         <p className="font-mono text-xs">{err.error}</p>
                       </li>
                     ))}
-                    {validationResult.frontmatterErrors?.map(
-                      (err: any, i: number) => (
-                        <li
-                          key={`fm-${i}`}
-                          className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/20"
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-widest bg-amber-500/20 px-2 py-1 rounded block w-fit mb-2">
-                            Frontmatter: {err.location}
-                          </span>
-                          <p className="font-mono text-xs">{err.error}</p>
-                        </li>
-                      ),
-                    )}
+
                   </ul>
                 </AlertDescription>
               </Alert>

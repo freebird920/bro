@@ -1,5 +1,5 @@
 /**
- * BRO v1 — 수동 작성 Discriminated Union 타입
+ * BRO v1.0 — 수동 작성 Discriminated Union 타입
  * 
  * json-schema-to-typescript가 allOf + if/then discriminator 패턴을
  * 정확한 Union Type으로 변환하지 못하는 한계를 보완합니다.
@@ -10,8 +10,13 @@
 
 export interface CreatorPerson {
   readonly "@type": "Person";
-  readonly "@id": string;
+  readonly "@id"?: string;
   name: string;
+}
+
+export interface CreatorAnonymous {
+  readonly "@type": "Anonymous";
+  name?: string;
 }
 
 export interface CreatorGovernment {
@@ -40,11 +45,12 @@ export interface CreatorSoftware {
 }
 
 /**
- * 5가지 작성자 타입의 Discriminated Union.
+ * 6가지 작성자 타입의 Discriminated Union.
  * `@type` 필드를 discriminator로 사용합니다.
  */
 export type Creator =
   | CreatorPerson
+  | CreatorAnonymous
   | CreatorGovernment
   | CreatorCorporation
   | CreatorOrganization
@@ -55,6 +61,7 @@ export type Creator =
  */
 export const CREATOR_TYPES = [
   "Person",
+  "Anonymous",
   "GovernmentOrganization",
   "Corporation",
   "Organization",
@@ -71,9 +78,8 @@ export interface TerminalIdentifier {
 }
 
 // ─── Re-export auto-generated top-level types for convenience ───
-
 export type {
-  BibliographicReactionObjectBRO,
+  BibliographicReactionObjectBROV10 as BibliographicReactionObjectBRO,
   BroItemList,
   BroArticle,
   BroAbstract,

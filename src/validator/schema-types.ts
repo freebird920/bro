@@ -9,35 +9,52 @@
  */
 
 /**
- * Bibliographic Reaction Object (BRO)의 원시스키마 BroItemList, BroArticle, BroAbstract. 본 스키마는 시스템 쓰기(Write/Command) 전용 모델이며, 클라이언트 조회를 위한 내포(Embedding) 트리 변환은 미들웨어 계층의 책임으로 위임함.
- * [ARCHITECTURE CORE DIRECTIVE] 본 원시 스키마는 애그리거트 루트(Aggregate Root) 간의 객체 내포(Embedding)를 엄격히 금지하고 단방향 URN 식별자(@id) 참조만을 허용한다. 이는 분산 DB 환경에서 트랜잭션 락 경합과 다중 판본 업데이트 이상을 방어하기 위한 CQRS 쓰기 파이프라인의 물리적 제약이다. 프론트엔드 렌더링 최적화를 위한 JSON 내포 구조(View Model)가 필요할 경우, 본 원시 스키마를 수정하지 말고 도메인 계층에서 In-Memory Join을 수행하여 도메인 특화 응답 DTO를 합성할 것.
+ * Bibliographic Reaction Object (BRO)의 JSON-LD 네이티브 원시 스키마. [ARCHITECTURE DIRECTIVE] 1. 본 스키마는 객체 내포를 금지하고 @id 참조 무결성을 보장하는 CQRS 쓰기 전용 모델임. 2. 기존 v1.0의 안티패턴이었던 '텍스트 내 YAML 은닉 구조'를 전면 폐기하고 JSON-LD 네이티브 구조로 데이터 인덱싱 성능을 복구함. 3. @id는 영구 불변(Immutable)이며 데이터 갱신 시 dateModified 타임스탬프 갱신 및 version 속성 증가로 버전 관리함. 4. Schema.org 표준 어휘를 최상위 노드에서 지원하고 커스텀 메타데이터는 additionalProperty(PropertyValue) 배열로 수용함.
  */
-export type BibliographicReactionObjectBRO = BroItemList | BroArticle | BroAbstract;
+export type BibliographicReactionObjectBROV10 = BroItemList | BroArticle | BroAbstract;
 /**
- * UUID v4(랜덤) 및 v7(타임스탬프) v5(네임스페이스 기반 SHA-1 해시)
+ * UUID v4, v5, v7을 수용하는 정규화된 범용 고유 식별자 URN 포맷.
  */
 export type UrnUuidOnly = string;
 /**
- * [CREATOR_ENTITIES: 2. 저자 엔티티 계층] 다형성 속성 출혈(Property Bleeding) 상호 배제.
+ * RFC 3339 기반 타임스탬프 강제 규격. Z 또는 오프셋 명시를 누락한 경우 DB 데이터 오염으로 간주하여 인입을 차단함.
+ */
+export type StrictDateTime = string;
+/**
+ * [CREATOR_ENTITIES] 작성자 엔티티 다형성 계층. 공공 및 법인은 @id 강제 검증, 개인은 수집 파편화 대응을 위한 선택적 @id 허용, 익명은 추적 불가능한 작성자 데이터의 유실 방지 Fallback.
  */
 export type CreatorRoot =
   | CreatorPerson
+  | CreatorAnonymous
   | CreatorGovernment
   | CreatorCorporation
   | CreatorOrganization
   | CreatorSoftware;
-export type UrnOrcid = string;
-export type UrnIsni = string;
-export type UrnGovcode = string;
-export type UrnLei = string;
-export type UrnCrn = string;
-export type UrnBrn = string;
-export type UrnNpo = string;
-export type UrnModel = string;
 /**
- * RFC 3339 기반 날짜 포맷 검증. Z 또는 오프셋(+09:00)을 강제하여 타임존 누락으로 인한 DB 데이터 오염 방지.
+ * BCP 47 / ISO 639 언어 코드 목록.
  */
-export type StrictDateTime = string;
+export type LanguageArray = string[];
+/**
+ * 분류용 핵심어 목록.
+ */
+export type KeywordsArray = string[];
+/**
+ * Schema.org 표준 PropertyValue 기반 동적 메타데이터 확장 컨테이너. 도서관이나 서비스별로 파편화된 커스텀 메타데이터(예: 평점, 완독 여부, 추천 연령 등)를 스키마를 오염시키지 않고 수용함. NoSQL이나 RDBMS의 JSON 컬럼에서 완벽한 기계적 인덱싱이 가능함.
+ */
+export type AdditionalPropertyArray = {
+  "@type": "PropertyValue";
+  /**
+   * 동적 속성의 식별 키(Key)
+   */
+  name: string;
+  /**
+   * 동적 속성의 값(Value). 원시 타입 및 객체 허용.
+   */
+  value: {
+    [k: string]: unknown;
+  };
+  [k: string]: unknown;
+}[];
 export type UrnIdentifier =
   | {
       [k: string]: unknown;
@@ -59,9 +76,9 @@ export type UrnIdentifier =
     };
 export type UrnIdentifier1 = string;
 /**
- * 범용 문서 텍스트. 최상단 YAML Frontmatter 캡슐화 필수. [확장성 모델] 데이터 인입(Ingestion) 시 프론트매터 내부에 임의의 키(Arbitrary Keys)를 선언·확장하는 것을 전면 허용함. 서버는 인입된 키를 원본 그대로 영속화(Flat 저장)한다. 단, API 반환(Response) 시 파이프라인은 **현재 파서 버전이 정의하는 1급 필드** — `about_title`(string), `about_creator`(string), `article_title`(string), `article_byline`(string), `language`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[]) — 만을 최상위 노드에 직렬화하고, 기타 모든 잔여 동적 데이터는 `others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음 처리하여 마크다운을 재조립한다. 추후 특정 동적 키가 1급 객체로 승격되면 파서 버전을 업데이트하여 해당 키를 others가 아닌 최상위 노드에 출력한다. [SYSTEM_CONSTRAINT: 2-Pass Validation Required]
+ * 순수 본문 문자열 (주로 Markdown 구조). YAML Frontmatter 캡슐화를 전면 폐기함. 인입 파이프라인에서 본 필드 내의 메타데이터 은닉을 감지할 경우 페이로드 수용을 거부(Reject)하며, 모든 메타 속성은 JSON의 1급 객체 또는 additionalProperty로 분리 추출되어야 함.
  */
-export type BoundedText = string;
+export type PureText = string;
 
 /**
  * 다중 타겟 문서 큐레이션을 위한 영속적 컨테이너 엔티티 (ItemList).
@@ -69,67 +86,136 @@ export type BoundedText = string;
 export interface BroItemList {
   "@context": "https://schema.org";
   "@type": "ItemList";
-  "@id"?: UrnUuidOnly;
+  "@id": UrnUuidOnly;
+  /**
+   * 리스트 컨테이너의 고유 명칭.
+   */
   name?: string;
+  dateCreated: StrictDateTime;
+  /**
+   * RFC 3339 기반 타임스탬프 강제 규격. Z 또는 오프셋 명시를 누락한 경우 DB 데이터 오염으로 간주하여 인입을 차단함.
+   */
+  dateModified?: string;
+  /**
+   * 에그리거트 루트의 변경 이력 추적 및 낙관적 락(Optimistic Locking) 검증을 위한 버전 해시 또는 시퀀스 넘버.
+   */
+  version?: string | number;
   /**
    * @minItems 1
    */
   creator: [CreatorRoot, ...CreatorRoot[]];
   /**
-   * 리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 페이로드 생성 시 반드시 @id 객체 배열만을 전송해야 하며, 문서 객체 전체를 배열 내부에 내포(Embed)하는 페이로드는 검증(Validation) 단계에서 거부(Reject)된다.
-   * [ANTI-PATTERN PREVENTION] itemListElement 내부의 oneOf를 통한 Article 객체 직접 포함 허용 로직은 데이터 단편화 방지 및 식별자 정규화를 위해 영구 삭제됨. 모든 하위 엔티티 결합은 오직 @id 포인터로만 이루어져야 함.
+   * 리스트에 포함된 개별 문서(Article 등)의 식별자 목록. 직접 내포(Embedding) 금지. 데이터 단편화 방지 및 URN 식별자 정규화를 위해 철저히 포인터 기반 참조로 격리함.
    */
   itemListElement: {
     "@id": UrnUuidOnly;
     [k: string]: unknown;
   }[];
+  inLanguage?: LanguageArray;
+  keywords?: KeywordsArray;
+  additionalProperty?: AdditionalPropertyArray;
   [k: string]: unknown;
 }
 export interface CreatorPerson {
   "@type": "Person";
   name: string;
-  "@id": UrnUuidOnly | UrnOrcid | UrnIsni;
+  /**
+   * 인증된 사용자에 한해 부여되는 URN/ORCID 식별자. 파편화된 외부 데이터 스크래핑 인입 시 생략을 허용함.
+   */
+  "@id"?:
+    | UrnUuidOnly
+    | {
+        [k: string]: unknown;
+      };
+}
+/**
+ * 네트워크 인입 단말 혹은 수집 파이프라인에서 작성자 엔티티 추적에 실패할 경우, null/undefined로 인한 스키마 크래시를 방지하는 Fallback 타입.
+ */
+export interface CreatorAnonymous {
+  "@type": "Anonymous";
+  name?: string;
 }
 export interface CreatorGovernment {
   "@type": "GovernmentOrganization";
   name: string;
-  "@id": UrnUuidOnly | UrnGovcode | UrnLei | UrnIsni;
+  "@id":
+    | UrnUuidOnly
+    | {
+        [k: string]: unknown;
+      };
 }
 export interface CreatorCorporation {
   "@type": "Corporation";
   name: string;
-  "@id": UrnUuidOnly | UrnCrn | UrnBrn | UrnLei | UrnIsni;
+  "@id":
+    | UrnUuidOnly
+    | {
+        [k: string]: unknown;
+      };
 }
 export interface CreatorOrganization {
   "@type": "Organization";
   name: string;
-  "@id": UrnUuidOnly | UrnNpo | UrnLei | UrnIsni;
+  "@id":
+    | UrnUuidOnly
+    | {
+        [k: string]: unknown;
+      };
 }
 export interface CreatorSoftware {
   "@type": "SoftwareApplication";
   name: string;
   softwareVersion?: string;
-  "@id": UrnModel;
+  "@id": {
+    [k: string]: unknown;
+  };
 }
 /**
- * 단일 코어 문서(Article) 처리를 위한 쓰기/영속성 스키마. 파생 문서(Abstract 등)와의 결합은 외부 참조(@id)로만 이뤄진다.
+ * 단일 파생 문서(Article) 처리를 위한 영속성 스키마. 기존 YAML 프론트매터 속성을 스키마 최상위 프로퍼티로 추출하여 검색 엔진 및 DB 인덱서의 직접 접근을 허용함.
  */
 export interface BroArticle {
   "@context": "https://schema.org";
   "@type": "Article";
-  "@id"?: UrnUuidOnly;
-  dateCreated: StrictDateTime;
-  datePublished?: StrictDateTime;
+  "@id": UrnUuidOnly;
   /**
-   * 파생 문서가 타겟팅하는 코어 저작물 엔티티. 다중 판본 바인딩 시 복수의 원소를 허용하나, 각 요소는 단일 URN을 소유함.
+   * 파생 문서 자체의 제목. 시스템 반환 시 Article 엔티티의 최상위 명칭으로 사용됨.
+   */
+  name?: string;
+  /**
+   * 현재 문서가 타겟팅(about)하고 있는 원본 코어 저작물의 텍스트 제목. 원문 URN 참조가 실패하거나 지연 로딩될 경우의 디그레이드(Degrade) 처리를 위한 역정규화 데이터.
+   */
+  aboutTitle?: string;
+  /**
+   * 현재 문서가 타겟팅하는 원본 코어 저작물의 원작자 텍스트 표기.
+   */
+  aboutCreator?: string;
+  /**
+   * 현재 파생 문서 작성자의 크레딧 라인 표기.
+   */
+  articleByline?: string;
+  dateCreated: StrictDateTime;
+  dateModified?: StrictDateTime;
+  datePublished?: StrictDateTime;
+  version?: string | number;
+  /**
+   * 파생 문서가 타겟팅하는 코어 저작물 엔티티의 식별자 묶음. 다중 판본 바인딩 시 복수 원소를 허용함.
    *
    * @minItems 1
    */
   about: [TerminalIdentifier, ...TerminalIdentifier[]];
-  text: BoundedText;
+  text: PureText;
+  inLanguage?: LanguageArray;
+  keywords?: KeywordsArray;
   /**
-   * 현재 문서(Article)에 종속된 파생 요약본의 식별자(URN) 배열. 요약본의 상세 텍스트(Text)는 포함하지 않는다.
-   * [DATA REDUNDANCY LOCK] Article 페이로드 내에 Abstract 본문 내포를 허용할 경우 발생하는 1:N 구조의 디스크 중복 적재(Redundancy) 및 B-Tree 분할을 막기 위해 철저히 식별자 참조 체계로 고립시킴.
+   * 관련 이미지 URL 배열.
+   */
+  image?: string[];
+  /**
+   * 참고 문헌 또는 원문 URL 목록.
+   */
+  citation?: string[];
+  /**
+   * 현재 문서(Article)에 종속된 파생 요약본의 식별자(URN) 배열. 1:N 구조의 디스크 중복 적재를 막기 위한 식별자 참조. 본문 내포 절대 금지.
    */
   abstract?: {
     "@id": UrnUuidOnly;
@@ -139,37 +225,50 @@ export interface BroArticle {
    * @minItems 1
    */
   creator: [CreatorRoot, ...CreatorRoot[]];
+  additionalProperty?: AdditionalPropertyArray;
   [k: string]: unknown;
 }
 /**
- * 순환 참조(Billion Laughs) 공격을 차단하기 위한 터미널 객체.
+ * 순환 참조(Billion Laughs 등) 무한 루프 렌더링 공격을 원천 차단하기 위해 계층 깊이를 제한한 터미널 식별 객체.
  */
 export interface TerminalIdentifier {
   "@type": "Article" | "CreativeWork";
   /**
-   * [BASE_PRIMITIVES: 1. 원시 데이터 계층 - 식별자, 날짜 통제] 식별자 검증. 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 패턴을 단순화함.
+   * [BASE_PRIMITIVES: 원시 데이터 계층 식별자] 시스템 레벨의 소문자 URN Scheme 정규화를 전제로 한 정규식 집합.
    */
   identifier: UrnIdentifier & UrnIdentifier1;
 }
 /**
- * 단일 요약본(Abstract) 처리를 위한 원시 스키마
+ * 구조화된 요약 데이터. isBasedOn 속성을 통해 원본 역참조.
  */
 export interface BroAbstract {
   "@context": "https://schema.org";
   "@type": "CreativeWork";
-  "@id"?: UrnUuidOnly;
+  "@id": UrnUuidOnly;
   dateCreated: StrictDateTime;
-  datePublished?: StrictDateTime;
-  text: BoundedText;
+  dateModified?: StrictDateTime;
+  version?: string | number;
+  text: PureText;
+  inLanguage?: LanguageArray;
+  keywords?: KeywordsArray;
+  /**
+   * 관련 이미지 URL 배열.
+   */
+  image?: string[];
+  /**
+   * 참고 문헌 또는 원문 URL 목록.
+   */
+  citation?: string[];
   /**
    * @minItems 1
    */
   creator: [CreatorRoot, ...CreatorRoot[]];
   /**
-   * 이 요약이 기반하고 있는 원본 엔티티(Article 또는 도서 등 CreativeWork)의 식별자
+   * 이 요약이 기반하고 있는 원본 엔티티(Article 또는 도서 등 CreativeWork)의 단방향 외부 식별자 포인터.
    *
    * @minItems 1
    */
   isBasedOn: [TerminalIdentifier, ...TerminalIdentifier[]];
+  additionalProperty?: AdditionalPropertyArray;
   [k: string]: unknown;
 }

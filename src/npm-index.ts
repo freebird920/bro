@@ -5,7 +5,13 @@ export { BroV1Schema };
 
 // Export validation logic and utilities
 export { validateBroSchema, broV1Schema } from './validator/index';
-export * from './lib/frontmatter';
+
+// BIBFRAME 2.0 Conversion utilities
+export { convertBroToBibframe } from './lib/bibframe-converter';
+export type { BibframeWork, BibframeContribution, BibframeInstance, BibframeNote, BibframeIdentifier } from './lib/bibframe-converter';
+
+// AI RAG Markdown Renderer
+export { renderBroToMarkdown } from './lib/markdown-renderer';
 
 // KOMARC Conversion utilities
 export * from './lib/komarc-converter';
@@ -18,10 +24,10 @@ export type {
   Creator,
   CreatorType,
   CreatorPerson,
+  CreatorAnonymous,
   CreatorGovernment,
   CreatorCorporation,
   CreatorOrganization,
   CreatorSoftware,
-  // TerminalIdentifier는 validator/schema-types에서 이미 export 되므로 생략
 } from './lib/bro-types';
 export { CREATOR_TYPES } from './lib/bro-types';

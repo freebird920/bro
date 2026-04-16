@@ -48,6 +48,15 @@ async function buildNpmPackage() {
 
     const rootPkg = JSON.parse(fs.readFileSync(path.resolve(rootDir, 'package.json'), 'utf8'));
 
+    // NPM 패키지에 필요한 최소한의 의존성만 포함
+    const npmDependencies = {};
+    const requiredDeps = ['@cfworker/json-schema'];
+    for (const dep of requiredDeps) {
+      if (rootPkg.dependencies?.[dep]) {
+        npmDependencies[dep] = rootPkg.dependencies[dep];
+      }
+    }
+
     const distPackageJson = {
       name: rootPkg.name,
       version: rootPkg.version,
@@ -55,7 +64,13 @@ async function buildNpmPackage() {
       repository: rootPkg.repository,
       author: rootPkg.author,
       license: rootPkg.license,
-      keywords: rootPkg.keywords,
+      keywords: [
+        ...rootPkg.keywords,
+        "bibframe",
+        "json-ld",
+        "bibliographic",
+        "schema.org"
+      ],
       main: "./npm-index.cjs",
       module: "./npm-index.js",
       types: "./npm-index.d.ts",
@@ -67,8 +82,8 @@ async function buildNpmPackage() {
         },
         "./schema": "./bro-v1-schema.json"
       },
-      dependencies: rootPkg.dependencies || {},
-      peerDependencies: rootPkg.peerDependencies || {}
+      dependencies: npmDependencies,
+      peerDependencies: {}
     };
 
     fs.writeFileSync(
