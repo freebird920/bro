@@ -1,86 +1,94 @@
-/**
- * BRO v1.0 — 수동 작성 Discriminated Union 타입
- * 
- * json-schema-to-typescript가 allOf + if/then discriminator 패턴을
- * 정확한 Union Type으로 변환하지 못하는 한계를 보완합니다.
- * 이 파일의 타입은 bro-v1-schema.json의 $defs와 1:1 동기화되어야 합니다.
- */
+import type {
+  Agent,
+  AgentCorporation,
+  AgentGovernment,
+  AgentOrganization,
+  AgentPerson,
+  AgentRole,
+  AgentSoftware,
+  AgentUnknown,
+  // BibliographicReactionObjectBROV10,
+  BroPayload,
+  BroReaction,
+  BroReactionAbstract,
+  BroReactionList,
+  ExternalReference,
+  ReactionType,
+} from "../validator/schema-types";
 
-// ─── Creator Entities (Polymorphic, Mutually Exclusive) ───
+export const BRO_CONTEXT_IRI = "https://schema.slat.or.kr/bro/v1.0/context.jsonld" as const;
+export const BRO_SCHEMA_IRI = "https://schema.slat.or.kr/bro/v1.0/schema.json" as const;
+export const BRO_VOCAB_IRI = "https://schema.slat.or.kr/bro/v1.0/vocab#" as const;
 
-export interface CreatorPerson {
-  readonly "@type": "Person";
-  readonly "@id"?: string;
-  name: string;
-}
+export const BRO_ENTITY_TYPES = [
+  "Reaction",
+  "ReactionAbstract",
+  "ReactionList",
+] as const;
 
-export interface CreatorAnonymous {
-  readonly "@type": "Anonymous";
-  name?: string;
-}
+export const REACTION_TYPES = [
+  "Response",
+  "Listing",
+  "Unspecified",
+] as const satisfies readonly ReactionType[];
 
-export interface CreatorGovernment {
-  readonly "@type": "GovernmentOrganization";
-  readonly "@id": string;
-  name: string;
-}
-
-export interface CreatorCorporation {
-  readonly "@type": "Corporation";
-  readonly "@id": string;
-  name: string;
-}
-
-export interface CreatorOrganization {
-  readonly "@type": "Organization";
-  readonly "@id": string;
-  name: string;
-}
-
-export interface CreatorSoftware {
-  readonly "@type": "SoftwareApplication";
-  readonly "@id": string;
-  name: string;
-  softwareVersion?: string;
-}
-
-/**
- * 6가지 작성자 타입의 Discriminated Union.
- * `@type` 필드를 discriminator로 사용합니다.
- */
-export type Creator =
-  | CreatorPerson
-  | CreatorAnonymous
-  | CreatorGovernment
-  | CreatorCorporation
-  | CreatorOrganization
-  | CreatorSoftware;
-
-/**
- * 지원하는 Creator @type 값들
- */
-export const CREATOR_TYPES = [
+export const AGENT_TYPES = [
   "Person",
-  "Anonymous",
+  "UnknownAgent",
   "GovernmentOrganization",
   "Corporation",
   "Organization",
   "SoftwareApplication",
+  "Role",
 ] as const;
 
-export type CreatorType = (typeof CREATOR_TYPES)[number];
+export type AgentType = (typeof AGENT_TYPES)[number];
+export type CreatorType = AgentType;
+export type Creator = Agent;
+export type CreatorPerson = AgentPerson;
+export type CreatorUnknown = AgentUnknown;
+export type CreatorAnonymous = AgentUnknown;
+export type CreatorGovernment = AgentGovernment;
+export type CreatorCorporation = AgentCorporation;
+export type CreatorOrganization = AgentOrganization;
+export type CreatorSoftware = AgentSoftware;
+export type CreatorRole = AgentRole;
+export type TerminalIdentifier = ExternalReference;
 
-// ─── Terminal Identifier ───
-
-export interface TerminalIdentifier {
-  readonly "@type": "Article" | "CreativeWork";
-  identifier: string;
+export function isBroPayload(value: unknown): value is BroPayload {
+  if (!value || typeof value !== "object") return false;
+  const type = (value as Record<string, unknown>)["@type"];
+  return type === "Reaction" || type === "ReactionAbstract" || type === "ReactionList";
 }
 
-// ─── Re-export auto-generated top-level types for convenience ───
+export function isReaction(value: unknown): value is BroReaction {
+  return isBroPayload(value) && value["@type"] === "Reaction";
+}
+
+export function isReactionAbstract(value: unknown): value is BroReactionAbstract {
+  return isBroPayload(value) && value["@type"] === "ReactionAbstract";
+}
+
+export function isReactionList(value: unknown): value is BroReactionList {
+  return isBroPayload(value) && value["@type"] === "ReactionList";
+}
+
 export type {
+  Agent,
+  AgentCorporation,
+  AgentGovernment,
+  AgentOrganization,
+  AgentPerson,
+  AgentRole,
+  AgentSoftware,
+  AgentUnknown,
   BibliographicReactionObjectBROV10 as BibliographicReactionObjectBRO,
-  BroItemList,
-  BroArticle,
-  BroAbstract,
+  BroPayload,
+  BroReaction,
+  BroReactionAbstract,
+  BroReactionList,
+  ExternalReference,
+  ReactionType,
 } from "../validator/schema-types";
+
+export { AGENT_TYPES as CREATOR_TYPES };

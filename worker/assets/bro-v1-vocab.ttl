@@ -1,0 +1,17 @@
+@prefix bro:    <https://schema.slat.or.kr/bro/v1.0/vocab#> .
+@prefix schema: <https://schema.org/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+bro:Reaction         a rdfs:Class ; rdfs:subClassOf schema:CreativeWork .
+bro:ReactionAbstract a rdfs:Class ; rdfs:subClassOf schema:CreativeWork .
+bro:ReactionList     a rdfs:Class ; rdfs:subClassOf schema:ItemList .
+bro:UnknownAgent     a rdfs:Class ; rdfs:subClassOf schema:Agent ;
+                     rdfs:comment "Explicit declaration that the publisher cannot identify the agent. Each instance is a fresh blank node by design; no global singleton." .
+
+bro:reactionType a rdf:Property ; rdfs:subPropertyOf schema:additionalType .
+bro:Response     a bro:ReactionType .
+bro:Listing      a bro:ReactionType .
+bro:Unspecified  a bro:ReactionType .
+
+bro:byline a rdf:Property ; rdfs:subPropertyOf schema:creditText .

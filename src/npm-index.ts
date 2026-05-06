@@ -1,33 +1,45 @@
-// Unified entry point for the NPM package
-export * from './validator/schema-types';
-import BroV1Schema from '../worker/assets/bro-v1-schema.json';
-export { BroV1Schema };
+import BroV1Schema from "../worker/assets/bro-v1-schema.json";
+import { broV1Context as BroV1Context } from "./lib/bro-context";
+import { broV1VocabTurtle as BroV1VocabTurtle } from "./lib/bro-vocab";
 
-// Export validation logic and utilities
-export { validateBroSchema, broV1Schema } from './validator/index';
-
-// BIBFRAME 2.0 Conversion utilities
-export { convertBroToBibframe } from './lib/bibframe-converter';
-export type { BibframeWork, BibframeContribution, BibframeInstance, BibframeNote, BibframeIdentifier } from './lib/bibframe-converter';
-
-// AI RAG Markdown Renderer
-export { renderBroToMarkdown } from './lib/markdown-renderer';
-
-// KOMARC Conversion utilities
-export * from './lib/komarc-converter';
-
-// URN Normalization utilities
-export { normalizePayload, normalizeUrnScheme } from './lib/normalize';
-
-// Manual Discriminated Union types for Creator polymorphism
+export { BroV1Context, BroV1Schema, BroV1VocabTurtle };
+export { broV1Schema, validateBroSchema, assertBroSchema } from "./validator/index";
+export { normalizePayload, normalizeUrnScheme, cloneAndNormalizePayload } from "./lib/normalize";
+export { convertBroToBibframe } from "./lib/bibframe-converter";
 export type {
+  BibframeContribution,
+  BibframeIdentifier,
+  BibframeInstance,
+  BibframeNote,
+  BibframeWork,
+} from "./lib/bibframe-converter";
+export { renderBroToMarkdown } from "./lib/markdown-renderer";
+export * from "./lib/komarc-converter";
+export * from "./validator/schema-types";
+export type {
+  Agent,
+  AgentType,
   Creator,
   CreatorType,
   CreatorPerson,
+  CreatorUnknown,
   CreatorAnonymous,
   CreatorGovernment,
   CreatorCorporation,
   CreatorOrganization,
   CreatorSoftware,
-} from './lib/bro-types';
-export { CREATOR_TYPES } from './lib/bro-types';
+  CreatorRole,
+} from "./lib/bro-types";
+export {
+  AGENT_TYPES,
+  BRO_CONTEXT_IRI,
+  BRO_ENTITY_TYPES,
+  BRO_SCHEMA_IRI,
+  BRO_VOCAB_IRI,
+  CREATOR_TYPES,
+  REACTION_TYPES,
+  isBroPayload,
+  isReaction,
+  isReactionAbstract,
+  isReactionList,
+} from "./lib/bro-types";

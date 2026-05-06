@@ -1,0 +1,132 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "@protected": true,
+    "@base": "https://schema.slat.or.kr/bro/v1.0/instances/",
+    "schema": "https://schema.org/",
+    "bro": "https://schema.slat.or.kr/bro/v1.0/vocab#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "Reaction": {
+      "@id": "bro:Reaction",
+      "@context": {
+        "creator": {
+          "@id": "schema:author",
+          "@container": "@set"
+        }
+      }
+    },
+    "ReactionAbstract": {
+      "@id": "bro:ReactionAbstract",
+      "@context": {
+        "creator": {
+          "@id": "schema:author",
+          "@container": "@set"
+        }
+      }
+    },
+    "ReactionList": {
+      "@id": "bro:ReactionList",
+      "@context": {
+        "creator": {
+          "@id": "schema:creator",
+          "@container": "@set"
+        }
+      }
+    },
+    "Person": "schema:Person",
+    "UnknownAgent": "bro:UnknownAgent",
+    "GovernmentOrganization": "schema:GovernmentOrganization",
+    "Corporation": "schema:Corporation",
+    "Organization": "schema:Organization",
+    "SoftwareApplication": "schema:SoftwareApplication",
+    "Role": "schema:Role",
+    "PropertyValue": "schema:PropertyValue",
+    "Article": "schema:Article",
+    "CreativeWork": "schema:CreativeWork",
+    "Book": "schema:Book",
+    "ScholarlyArticle": "schema:ScholarlyArticle",
+    "reactionType": {
+      "@id": "bro:reactionType",
+      "@type": "@vocab"
+    },
+    "Response": "bro:Response",
+    "Listing": "bro:Listing",
+    "Unspecified": "bro:Unspecified",
+    "name": "schema:name",
+    "byline": "bro:byline",
+    "text": "schema:text",
+    "textFormat": "schema:encodingFormat",
+    "roleName": "schema:roleName",
+    "agent": "schema:agent",
+    "keywords": {
+      "@id": "schema:keywords",
+      "@container": "@set"
+    },
+    "image": {
+      "@id": "schema:image",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "citation": {
+      "@id": "schema:citation",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "inLanguage": {
+      "@id": "schema:inLanguage",
+      "@container": "@set"
+    },
+    "license": {
+      "@id": "schema:license",
+      "@type": "@id"
+    },
+    "dateCreated": {
+      "@id": "schema:dateCreated",
+      "@type": "xsd:dateTime"
+    },
+    "dateModified": {
+      "@id": "schema:dateModified",
+      "@type": "xsd:dateTime"
+    },
+    "datePublished": {
+      "@id": "schema:datePublished",
+      "@type": "xsd:dateTime"
+    },
+    "startDate": {
+      "@id": "schema:startDate",
+      "@type": "xsd:date"
+    },
+    "endDate": {
+      "@id": "schema:endDate",
+      "@type": "xsd:date"
+    },
+    "softwareVersion": "schema:softwareVersion",
+    "about": {
+      "@id": "schema:about",
+      "@container": "@set"
+    },
+    "isBasedOn": {
+      "@id": "schema:isBasedOn",
+      "@container": "@set"
+    },
+    "itemListElement": {
+      "@id": "schema:itemListElement",
+      "@container": "@list"
+    },
+    "identifier": {
+      "@id": "schema:identifier",
+      "@type": "@id"
+    },
+    "additionalProperty": {
+      "@id": "schema:additionalProperty",
+      "@container": "@set"
+    },
+    "value": "schema:value",
+    "valueReference": "schema:valueReference",
+    "propertyID": "schema:propertyID",
+    "unitCode": "schema:unitCode",
+    "unitText": "schema:unitText"
+  }
+}

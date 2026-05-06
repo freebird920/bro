@@ -1,41 +1,37 @@
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 
 async function build() {
-  const distDir = path.resolve('dist-frontmatter');
+  const distDir = path.resolve("dist-frontmatter");
 
-  console.log('1. Building frontmatter module...');
-  // Build the frontmatter logic using tsup (Generates CJS, ESM, and type declarations)
-  execSync('pnpm exec tsup src/lib/frontmatter.ts --format cjs,esm --dts --outDir dist-frontmatter --clean --tsconfig tsconfig.app.json', { stdio: 'inherit' });
+  console.log("1. Building BRO markdown renderer package...");
+  execSync("pnpm exec tsup src/lib/markdown-renderer.ts --format cjs,esm --dts --outDir dist-frontmatter --clean --tsconfig tsconfig.app.json", {
+    stdio: "inherit",
+  });
 
-  console.log('2. Generating package.json for npm publish...');
-  // Generate a virtual package.json specifically for the @slat.or.kr/bro-frontmatter release
+  console.log("2. Generating package.json for markdown renderer publish...");
+  const rootPackageJson = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
   const publishPackageJson = {
-    name: "@slat.or.kr/bro-frontmatter",
-    version: "1.0.1",
-    main: "./frontmatter.cjs",
-    module: "./frontmatter.js",
-    types: "./frontmatter.d.ts",
+    name: "@slat.or.kr/bro-markdown-renderer",
+    version: rootPackageJson.version,
+    main: "./markdown-renderer.cjs",
+    module: "./markdown-renderer.js",
+    types: "./markdown-renderer.d.ts",
     exports: {
       ".": {
-        "require": "./frontmatter.cjs",
-        "import": "./frontmatter.js",
-        "types": "./frontmatter.d.ts"
-      }
-    }
+        require: "./markdown-renderer.cjs",
+        import: "./markdown-renderer.js",
+        types: "./markdown-renderer.d.ts",
+      },
+    },
   };
 
-  // Write the generated package.json into the dist-frontmatter folder
-  fs.writeFileSync(
-    path.join(distDir, 'package.json'),
-    JSON.stringify(publishPackageJson, null, 2)
-  );
-
-  console.log('✅ Build complete! You can now publish from /dist-frontmatter');
+  fs.writeFileSync(path.join(distDir, "package.json"), JSON.stringify(publishPackageJson, null, 2));
+  console.log("Build complete. You can publish from /dist-frontmatter.");
 }
 
-build().catch(err => {
-  console.error(err);
+build().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

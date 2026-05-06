@@ -1,24 +1,18 @@
-/**
- * BRO → BIBFRAME 2.0 변환기
- * 
- * BRO 페이로드(Article/Abstract)를 BIBFRAME 2.0 JSON-LD 구조로 변환합니다.
- * Linked Open Data(LOD) 생태계와의 호환성을 위한 완전한 JSON-LD/BIBFRAME 2.0 변환을 지원합니다.
- * 
- * [매핑 규칙]
- * - Article → bf:Work + bf:Review, 관계: bf:reviewOf
- * - CreativeWork (Abstract) → bf:Work + bf:Summary, 관계: bf:summaryOf
- * - Creator 다형성: Person/Anonymous → bf:Person, Organization 계열 → bf:Organization, Software → bf:Agent
- */
-
-import type { BroArticle, BroAbstract } from '../validator/schema-types';
-
-// ─── BIBFRAME Output Types ───
+import type {
+  Agent,
+  BibliographicReactionObjectBROV10,
+  ExternalReference,
+} from "../validator/schema-types";
 
 export interface BibframeContribution {
   "@type": "bf:Contribution";
   "bf:agent": {
     "@type": string;
     "@id"?: string;
+    "rdfs:label": string;
+  };
+  "bf:role"?: {
+    "@type": "bf:Role";
     "rdfs:label": string;
   };
 }
@@ -31,11 +25,7 @@ export interface BibframeIdentifier {
 export interface BibframeInstance {
   "@type": "bf:Instance";
   "bf:identifiedBy": BibframeIdentifier;
-  "bf:title"?: {
-    "@type": "bf:Title";
-    "bf:mainTitle": string;
-  };
-  "bf:responsibilityStatement"?: string;
+  "bf:instanceOf"?: { "@id": string; "@type": string };
 }
 
 export interface BibframeNote {
@@ -48,6 +38,8 @@ export interface BibframeWork {
     bf: string;
     rdf: string;
     rdfs: string;
+    schema: string;
+    bro: string;
   };
   "@type": string[];
   "@id": string;
@@ -58,113 +50,129 @@ export interface BibframeWork {
     "@type": "bf:Title";
     "bf:mainTitle": string;
   };
-  "bf:note": BibframeNote;
+  "bf:note"?: BibframeNote;
   [key: string]: unknown;
 }
 
-// ─── Converter Implementation ───
+function agentLabel(agent: Agent): string {
+  if (agent["@type"] === "Role") return agent.roleName || agentLabel(agent.agent);
+  if ("name" in agent && agent.name) return agent.name;
+  return "Unknown agent";
+}
 
-/**
- * BRO 페이로드에서 BIBFRAME 2.0으로의 변환.
- * 
- * @param payload BroArticle 또는 BroAbstract 페이로드
- * @returns BIBFRAME 2.0 JSON-LD 객체
- * 
- * @example
- * ```typescript
- * import { convertBroToBibframe } from '@slat.or.kr/bro-schema';
- * 
- * const bibframe = convertBroToBibframe(articlePayload);
- * console.log(bibframe["@type"]); // ["bf:Work", "bf:Review"]
- * ```
- */
-export function convertBroToBibframe(payload: BroArticle | BroAbstract): BibframeWork {
-  const isArticle = payload["@type"] === "Article";
-  const bfClass = isArticle ? "bf:Review" : "bf:Summary";
-  const relationProp = isArticle ? "bf:reviewOf" : "bf:summaryOf";
+function agentType(agent: Agent): string {
+  const concreteAgent = agent["@type"] === "Role" ? agent.agent : agent;
+  switch (concreteAgent["@type"]) {
+    case "Person":
+    case "UnknownAgent":
+      return "bf:Person";
+    case "GovernmentOrganization":
+    case "Corporation":
+    case "Organization":
+      return "bf:Organization";
+    case "SoftwareApplication":
+      return "bf:Agent";
+    default:
+      return "bf:Agent";
+  }
+}
 
-  // 작성자(Agent) 처리 로직 (권위 vs 익명 분기)
-  const contributions: BibframeContribution[] = payload.creator.map((agent) => {
-    let bfAgentType = "bf:Agent";
+function agentId(agent: Agent): string | undefined {
+  const concreteAgent = agent["@type"] === "Role" ? agent.agent : agent;
+  return "@id" in concreteAgent ? concreteAgent["@id"] : undefined;
+}
 
-    if (agent["@type"] === "Person") bfAgentType = "bf:Person";
-    if (agent["@type"] === "Anonymous") bfAgentType = "bf:Person"; // 익명도 개념상 Person으로 매핑
-    if (
-      ["Organization", "GovernmentOrganization", "Corporation"].includes(agent["@type"])
-    ) {
-      bfAgentType = "bf:Organization";
-    }
-
-    const agentEntry: BibframeContribution["bf:agent"] = {
-      "@type": bfAgentType,
-      "rdfs:label": ("name" in agent && agent.name) ? agent.name : "Anonymous",
-    };
-
-    // 식별자가 있는 경우만 매핑
-    if ("@id" in agent && agent["@id"]) {
-      agentEntry["@id"] = String(agent["@id"]);
-    }
-
-    return {
-      "@type": "bf:Contribution" as const,
-      "bf:agent": agentEntry,
-    };
-  });
-
-  // 타겟 식별자 매핑 (about 또는 isBasedOn)
-  const targets = isArticle
-    ? (payload as BroArticle).about
-    : (payload as BroAbstract).isBasedOn;
-
-  const targetInstances: BibframeInstance[] = targets.map((t) => {
-    const instance: BibframeInstance = {
-      "@type": "bf:Instance" as const,
-      "bf:identifiedBy": {
-        "@type": "bf:Identifier" as const,
-        "rdf:value": String(t.identifier),
-      },
-    };
-
-    if (isArticle) {
-      const article = payload as BroArticle;
-      if (article.aboutName) {
-        instance["bf:title"] = {
-          "@type": "bf:Title",
-          "bf:mainTitle": article.aboutName,
-        };
-      }
-      if (article.aboutCreator) {
-        instance["bf:responsibilityStatement"] = article.aboutCreator;
-      }
-    }
-
-    return instance;
-  });
-
-  const result: BibframeWork = {
-    "@context": {
-      "bf": "http://id.loc.gov/ontologies/bibframe/",
-      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-      "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    },
-    "@type": ["bf:Work", bfClass],
-    "@id": payload["@id"],
-    [relationProp]: targetInstances,
-    "bf:originDate": payload.dateCreated,
-    ...(payload.dateModified && { "bf:changeDate": payload.dateModified }),
-    "bf:contribution": contributions,
-    ...(payload.name && {
-      "bf:title": {
-        "@type": "bf:Title",
-        "bf:mainTitle": payload.name,
-      },
-    }),
-    // 순수 본문 매핑 (JSON Native)
-    "bf:note": {
-      "@type": "bf:Note",
-      "rdfs:label": payload.text,
+function contributionFromAgent(agent: Agent): BibframeContribution {
+  const contribution: BibframeContribution = {
+    "@type": "bf:Contribution",
+    "bf:agent": {
+      "@type": agentType(agent),
+      "rdfs:label": agentLabel(agent),
     },
   };
 
-  return result;
+  const id = agentId(agent);
+  if (id) contribution["bf:agent"]["@id"] = id;
+
+  if (agent["@type"] === "Role" && agent.roleName) {
+    contribution["bf:role"] = {
+      "@type": "bf:Role",
+      "rdfs:label": agent.roleName,
+    };
+  }
+
+  return contribution;
+}
+
+function instanceFromReference(reference: ExternalReference): BibframeInstance {
+  return {
+    "@type": "bf:Instance",
+    "bf:identifiedBy": {
+      "@type": "bf:Identifier",
+      "rdf:value": reference.identifier,
+    },
+    "bf:instanceOf": {
+      "@id": reference.identifier,
+      "@type": `schema:${reference["@type"]}`,
+    },
+  };
+}
+
+export function convertBroToBibframe(payload: BibliographicReactionObjectBROV10): BibframeWork {
+  const base: BibframeWork = {
+    "@context": {
+      bf: "http://id.loc.gov/ontologies/bibframe/",
+      rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+      schema: "https://schema.org/",
+      bro: "https://schema.slat.or.kr/bro/v1.0/vocab#",
+    },
+    "@type": ["bf:Work"],
+    "@id": payload["@id"],
+    "bf:originDate": payload.dateCreated,
+    ...(payload.dateModified ? { "bf:changeDate": payload.dateModified } : {}),
+    "bf:contribution": payload.creator.map(contributionFromAgent),
+    ...(payload.name
+      ? {
+          "bf:title": {
+            "@type": "bf:Title" as const,
+            "bf:mainTitle": payload.name,
+          },
+        }
+      : {}),
+  };
+
+  if (payload["@type"] === "Reaction") {
+    return {
+      ...base,
+      "@type": ["bf:Work", "bf:Review", "bro:Reaction"],
+      "bf:reviewOf": payload.about.map(instanceFromReference),
+      "bro:reactionType": `bro:${payload.reactionType}`,
+      "bf:note": {
+        "@type": "bf:Note",
+        "rdfs:label": payload.text,
+      },
+    };
+  }
+
+  if (payload["@type"] === "ReactionAbstract") {
+    return {
+      ...base,
+      "@type": ["bf:Work", "bf:Summary", "bro:ReactionAbstract"],
+      "bf:summaryOf": payload.isBasedOn.map(instanceFromReference),
+      "bf:note": {
+        "@type": "bf:Note",
+        "rdfs:label": payload.text,
+      },
+    };
+  }
+
+  return {
+    ...base,
+    "@type": ["bf:Work", "bf:Collection", "bro:ReactionList"],
+    "bf:hasItem": payload.itemListElement.map((element) => ({
+      "@id": element["@id"],
+      "@type": element["@type"] ? `bro:${element["@type"]}` : "bf:Work",
+    })),
+  };
 }
