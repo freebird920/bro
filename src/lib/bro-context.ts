@@ -8,45 +8,25 @@ export const broV1Context = {
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "prov": "http://www.w3.org/ns/prov#",
-    "Reaction": {
-      "@id": "bro:Reaction",
-      "@context": {
-        "creator": {
-          "@id": "schema:author",
-          "@container": "@set"
-        }
-      }
-    },
-    "ReactionAbstract": {
-      "@id": "bro:ReactionAbstract",
-      "@context": {
-        "creator": {
-          "@id": "schema:author",
-          "@container": "@set"
-        }
-      }
-    },
-    "ReactionList": {
-      "@id": "bro:ReactionList",
-      "@context": {
-        "creator": {
-          "@id": "schema:creator",
-          "@container": "@set"
-        }
-      }
-    },
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "bibo": "http://purl.org/ontology/bibo/",
+    "nlon": "http://lod.nl.go.kr/ontology/",
+    "Reaction": "bro:Reaction",
+    "ReactionAbstract": "bro:ReactionAbstract",
+    "ReactionList": "bro:ReactionList",
     "Person": "schema:Person",
-    "UnknownAgent": "bro:UnknownAgent",
-    "GovernmentOrganization": "schema:GovernmentOrganization",
-    "Corporation": "schema:Corporation",
     "Organization": "schema:Organization",
     "SoftwareApplication": "schema:SoftwareApplication",
+    "UnknownAgent": "bro:UnknownAgent",
     "Role": "schema:Role",
     "PropertyValue": "schema:PropertyValue",
-    "Article": "schema:Article",
-    "CreativeWork": "schema:CreativeWork",
     "Book": "schema:Book",
+    "Article": "schema:Article",
     "ScholarlyArticle": "schema:ScholarlyArticle",
+    "WebPage": "schema:WebPage",
+    "Dataset": "schema:Dataset",
+    "CreativeWork": "schema:CreativeWork",
     "reactionType": {
       "@id": "bro:reactionType",
       "@type": "@vocab"
@@ -58,8 +38,31 @@ export const broV1Context = {
     "byline": "bro:byline",
     "text": "schema:text",
     "textFormat": "schema:encodingFormat",
+    "creator": {
+      "@id": "schema:creator",
+      "@container": "@set"
+    },
+    "creatorName": "schema:creator",
+    "publisherName": "schema:publisher",
+    "bookEdition": "schema:bookEdition",
     "roleName": "schema:roleName",
     "agent": "schema:agent",
+    "identifier": {
+      "@id": "schema:identifier",
+      "@container": "@set"
+    },
+    "about": {
+      "@id": "schema:about",
+      "@container": "@set"
+    },
+    "isBasedOn": {
+      "@id": "schema:isBasedOn",
+      "@container": "@set"
+    },
+    "itemListElement": {
+      "@id": "schema:itemListElement",
+      "@container": "@list"
+    },
     "keywords": {
       "@id": "schema:keywords",
       "@container": "@set"
@@ -90,10 +93,7 @@ export const broV1Context = {
       "@id": "schema:dateModified",
       "@type": "xsd:dateTime"
     },
-    "datePublished": {
-      "@id": "schema:datePublished",
-      "@type": "xsd:dateTime"
-    },
+    "datePublished": "schema:datePublished",
     "startDate": {
       "@id": "schema:startDate",
       "@type": "xsd:date"
@@ -103,31 +103,38 @@ export const broV1Context = {
       "@type": "xsd:date"
     },
     "softwareVersion": "schema:softwareVersion",
-    "about": {
-      "@id": "schema:about",
-      "@container": "@set"
-    },
-    "isBasedOn": {
-      "@id": "schema:isBasedOn",
-      "@container": "@set"
-    },
-    "itemListElement": {
-      "@id": "schema:itemListElement",
-      "@container": "@list"
-    },
-    "identifier": {
-      "@id": "schema:identifier",
-      "@type": "@id"
-    },
     "additionalProperty": {
       "@id": "schema:additionalProperty",
       "@container": "@set"
     },
     "value": "schema:value",
-    "valueReference": "schema:valueReference",
+    "valueReference": {
+      "@id": "schema:valueReference",
+      "@type": "@id"
+    },
     "propertyID": "schema:propertyID",
     "unitCode": "schema:unitCode",
-    "unitText": "schema:unitText"
+    "unitText": "schema:unitText",
+    "bibliographicLevel": {
+      "@id": "bro:bibliographicLevel",
+      "@type": "@vocab"
+    },
+    "Work": "bro:WorkLevel",
+    "Edition": "bro:EditionLevel",
+    "Item": "bro:ItemLevel",
+    "@vocab": "https://schema.org/",
+    "Chapter": "schema:Chapter",
+    "Periodical": "schema:Periodical",
+    "Collection": "schema:Collection",
+    "Report": "schema:Report",
+    "url": {
+      "@id": "schema:url",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "exampleOfWork": {
+      "@id": "schema:exampleOfWork"
+    }
   }
 } as const;
 

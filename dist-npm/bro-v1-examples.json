@@ -1,0 +1,156 @@
+[
+  {
+    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+    "@type": "ReactionList",
+    "@id": "https://library.example.kr/lists/2026-05-recommended",
+    "name": "2026년 5월 사서 추천 자료",
+    "creator": [
+      {
+        "@type": "Organization",
+        "name": "예시도서관",
+        "@id": "https://library.example.kr/"
+      }
+    ],
+    "itemListElement": [
+      {
+        "@type": "Book",
+        "bibliographicLevel": "Edition",
+        "identifier": [
+          "urn:isbn:9788937462788",
+          "http://lod.nl.go.kr/resource/KMO199000001",
+          {
+            "@type": "PropertyValue",
+            "propertyID": "aladin:itemId",
+            "value": 123456
+          }
+        ],
+        "name": "1984",
+        "creatorName": "George Orwell",
+        "publisherName": "민음사",
+        "datePublished": "2003"
+      },
+      {
+        "@type": "ScholarlyArticle",
+        "identifier": "https://doi.org/10.1038/s41586-021-03819-2",
+        "name": "예시 논문"
+      },
+      {
+        "@type": "WebPage",
+        "name": "식별자를 아직 모르는 추천 웹문서",
+        "url": "https://example.org/recommended/webpage"
+      }
+    ],
+    "dateCreated": "2026-05-09T00:00:00+09:00",
+    "inLanguage": [
+      "ko"
+    ],
+    "citation": [
+      "https://library.example.kr/recommendations/2026-05"
+    ]
+  },
+  {
+    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+    "@type": "ReactionList",
+    "@id": "https://library.example.kr/lists/almond-editions",
+    "name": "아몬드 판본 구분 예시",
+    "creator": [
+      {
+        "@type": "Organization",
+        "name": "예시도서관"
+      }
+    ],
+    "itemListElement": [
+      {
+        "@type": "Book",
+        "bibliographicLevel": "Edition",
+        "identifier": "urn:example:book:almond-youth-edition",
+        "name": "아몬드",
+        "creatorName": "손원평",
+        "bookEdition": "청소년판"
+      },
+      {
+        "@type": "Book",
+        "bibliographicLevel": "Edition",
+        "identifier": "urn:example:book:almond-special-edition",
+        "name": "아몬드",
+        "creatorName": "손원평",
+        "bookEdition": "특별판"
+      }
+    ],
+    "dateCreated": "2026-05-09T00:00:00+09:00",
+    "inLanguage": [
+      "ko"
+    ]
+  },
+  {
+    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+    "@type": "Reaction",
+    "@id": "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "reactionType": "Listing",
+    "name": "청소년 토론 추천 사유",
+    "about": [
+      {
+        "@type": "Book",
+        "bibliographicLevel": "Edition",
+        "identifier": "urn:isbn:9788937462788",
+        "name": "1984",
+        "creatorName": "George Orwell"
+      }
+    ],
+    "text": "권력과 언어를 함께 토론하기 좋은 책이라 목록에 포함함.",
+    "creator": [
+      {
+        "@type": "Organization",
+        "name": "예시도서관"
+      }
+    ],
+    "dateCreated": "2026-05-09T00:00:00+09:00",
+    "inLanguage": [
+      "ko"
+    ]
+  },
+  {
+    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+    "@type": "ReactionList",
+    "@id": "https://library.example.kr/lists/2026-05-with-notes",
+    "name": "추천 사유가 포함된 목록",
+    "creator": [
+      {
+        "@type": "Organization",
+        "name": "예시도서관"
+      }
+    ],
+    "itemListElement": [
+      {
+        "@id": "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "@type": "Reaction"
+      }
+    ],
+    "dateCreated": "2026-05-09T00:00:00+09:00"
+  },
+  {
+    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+    "@type": "ReactionAbstract",
+    "@id": "urn:uuid:f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "name": "서평 요약",
+    "text": "이 요약은 1984의 신어를 언어 통제를 통한 사고 통제 장치로 해석한 서평을 압축한다.",
+    "creator": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://schema.slat.or.kr/agents/bro-summarizer",
+        "name": "BRO Summarizer",
+        "softwareVersion": "1.2.0"
+      }
+    ],
+    "dateCreated": "2026-05-09T21:05:00+09:00",
+    "isBasedOn": [
+      {
+        "@id": "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "@type": "Reaction"
+      }
+    ],
+    "inLanguage": [
+      "ko"
+    ]
+  }
+]

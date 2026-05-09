@@ -3,141 +3,798 @@ var bro_v1_schema_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://schema.slat.or.kr/bro/v1.0/schema.json",
   title: "Bibliographic Reaction Object (BRO) v1.0",
-  description: "Bibliographic Reaction Object (BRO)\uC758 JSON-LD \uB124\uC774\uD2F0\uBE0C \uC6D0\uC2DC \uC2A4\uD0A4\uB9C8.",
+  description: "JSON Schema for exchanging bibliographic reaction data: recommendation lists, review lists, reading lists, curation notes, reviews, comments, and summaries. The schema keeps the ordinary input model simple while remaining compatible with JSON-LD and bibliographic metadata ecosystems.",
   type: "object",
   oneOf: [
-    { $ref: "#/$defs/BroItemList" },
-    { $ref: "#/$defs/BroArticle" },
-    { $ref: "#/$defs/BroAbstract" }
+    {
+      $ref: "#/$defs/Reaction"
+    },
+    {
+      $ref: "#/$defs/ReactionAbstract"
+    },
+    {
+      $ref: "#/$defs/ReactionList"
+    }
   ],
   $defs: {
-    BroItemList: {
-      type: "object",
-      description: "\uB2E4\uC911 \uD0C0\uAC9F \uBB38\uC11C \uD050\uB808\uC774\uC158\uC744 \uC704\uD55C \uC601\uC18D\uC801 \uCEE8\uD14C\uC774\uB108 \uC5D4\uD2F0\uD2F0 (ItemList).",
-      required: [
-        "@context",
-        "@type",
-        "@id",
-        "creator",
-        "itemListElement",
-        "dateCreated"
-      ],
-      properties: {
-        "@context": { const: "https://schema.org" },
-        "@type": { const: "ItemList" },
-        "@id": { $ref: "#/$defs/urnUuidOnly" },
-        name: {
-          type: "string",
-          minLength: 2,
-          maxLength: 2e3,
-          description: "\uB9AC\uC2A4\uD2B8 \uCEE8\uD14C\uC774\uB108\uC758 \uACE0\uC720 \uBA85\uCE6D."
+    contextRef: {
+      description: "MUST be the BRO v1.0 context IRI. Extension contexts MAY be appended after the BRO context.",
+      oneOf: [
+        {
+          const: "https://schema.slat.or.kr/bro/v1.0/context.jsonld"
         },
-        dateCreated: { $ref: "#/$defs/strictDateTime" },
-        dateModified: {
-          $ref: "#/$defs/strictDateTime",
-          description: "\uBC84\uC804 \uC81C\uC5B4 \uBC0F \uB3D9\uC2DC\uC131 \uAD00\uB9AC\uB97C \uC704\uD55C \uCD5C\uC885 \uC218\uC815 \uC77C\uC2DC."
-        },
-        version: {
-          type: ["string", "number"],
-          description: "\uC5D0\uADF8\uB9AC\uAC70\uD2B8 \uB8E8\uD2B8\uC758 \uBCC0\uACBD \uC774\uB825 \uCD94\uC801 \uBC0F \uB099\uAD00\uC801 \uB77D(Optimistic Locking) \uAC80\uC99D\uC744 \uC704\uD55C \uBC84\uC804 \uD574\uC2DC \uB610\uB294 \uC2DC\uD000\uC2A4 \uB118\uBC84."
-        },
-        creator: {
+        {
           type: "array",
           minItems: 1,
-          uniqueItems: true,
-          items: { $ref: "#/$defs/creatorRoot" }
-        },
-        itemListElement: {
-          type: "array",
-          description: "\uB9AC\uC2A4\uD2B8\uC5D0 \uD3EC\uD568\uB41C \uAC1C\uBCC4 \uBB38\uC11C(Article \uB4F1)\uC758 \uC2DD\uBCC4\uC790 \uBAA9\uB85D. \uC9C1\uC811 \uB0B4\uD3EC(Embedding) \uAE08\uC9C0. \uB370\uC774\uD130 \uB2E8\uD3B8\uD654 \uBC29\uC9C0 \uBC0F URN \uC2DD\uBCC4\uC790 \uC815\uADDC\uD654\uB97C \uC704\uD574 \uCCA0\uC800\uD788 \uD3EC\uC778\uD130 \uAE30\uBC18 \uCC38\uC870\uB85C \uACA9\uB9AC\uD568.",
+          prefixItems: [
+            {
+              const: "https://schema.slat.or.kr/bro/v1.0/context.jsonld"
+            }
+          ],
           items: {
-            type: "object",
-            required: ["@id"],
-            properties: { "@id": { $ref: "#/$defs/urnUuidOnly" } }
+            oneOf: [
+              {
+                type: "string",
+                format: "uri"
+              },
+              {
+                type: "object"
+              }
+            ]
           }
+        }
+      ]
+    },
+    uuidUrn: {
+      type: "string",
+      description: "Lowercase RFC 9562 UUID URN. Versions 1, 4, 5, 6, 7, and 8 are accepted syntactically.",
+      pattern: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    httpsIri: {
+      type: "string",
+      description: "HTTPS IRI. Used for BRO entity identifiers and web identifiers where secure canonical IDs are available.",
+      pattern: '^https://(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}(?::[0-9]{1,5})?(?:/[^\\s<>"\\\\^`{|}]*)?$',
+      maxLength: 2048
+    },
+    httpIri: {
+      type: "string",
+      description: "HTTP IRI. Allowed for external bibliographic/LOD identifiers such as legacy linked-data resource URIs, but not for BRO entity @id.",
+      pattern: '^http://(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}(?::[0-9]{1,5})?(?:/[^\\s<>"\\\\^`{|}]*)?$',
+      maxLength: 2048
+    },
+    webIri: {
+      anyOf: [
+        {
+          $ref: "#/$defs/httpsIri"
         },
-        inLanguage: { $ref: "#/$defs/languageArray" },
-        keywords: { $ref: "#/$defs/keywordsArray" },
-        additionalProperty: { $ref: "#/$defs/additionalPropertyArray" }
+        {
+          $ref: "#/$defs/httpIri"
+        }
+      ]
+    },
+    mailtoUri: {
+      type: "string",
+      pattern: "^mailto:[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+      maxLength: 320
+    },
+    entityIri: {
+      description: "Identifier for a BRO entity instance. Use a UUID URN or an HTTPS IRI; do not use HTTP for BRO entity @id.",
+      anyOf: [
+        {
+          $ref: "#/$defs/uuidUrn"
+        },
+        {
+          $ref: "#/$defs/httpsIri"
+        }
+      ]
+    },
+    agentIri: {
+      description: "Identifier for an agent. UUID URN, HTTPS IRI, or mailto URI.",
+      anyOf: [
+        {
+          $ref: "#/$defs/uuidUrn"
+        },
+        {
+          $ref: "#/$defs/httpsIri"
+        },
+        {
+          $ref: "#/$defs/mailtoUri"
+        }
+      ]
+    },
+    rfc3339DateTime: {
+      type: "string",
+      format: "date-time",
+      description: "RFC 3339 date-time with Z or numeric offset. Naive datetimes are rejected.",
+      pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:(?:[0-5][0-9]|60)(?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    },
+    rfc3339Date: {
+      type: "string",
+      pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$"
+    },
+    bibliographicDate: {
+      description: "Bibliographic publication date. External works often have year-only or month-only precision.",
+      oneOf: [
+        {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        {
+          $ref: "#/$defs/rfc3339Date"
+        },
+        {
+          type: "string",
+          pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$"
+        },
+        {
+          type: "string",
+          pattern: "^[0-9]{4}$"
+        }
+      ]
+    },
+    languageTag: {
+      type: "string",
+      description: "BCP 47 language tag, syntactic validation only.",
+      pattern: "^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{1,8})*$",
+      maxLength: 35
+    },
+    languageTagArray: {
+      type: "array",
+      minItems: 1,
+      maxItems: 20,
+      uniqueItems: true,
+      items: {
+        $ref: "#/$defs/languageTag"
       }
     },
-    BroArticle: {
+    plainText: {
+      type: "string",
+      minLength: 1,
+      maxLength: 2e3
+    },
+    longText: {
+      type: "string",
+      minLength: 1,
+      maxLength: 1e4
+    },
+    bylineString: {
+      type: "string",
+      description: "Original attribution display string as it appeared in the source.",
+      minLength: 1,
+      maxLength: 2e3
+    },
+    bodyText: {
+      type: "string",
+      description: "Body text. It MUST NOT begin with a YAML/TOML front-matter block.",
+      minLength: 0,
+      maxLength: 3e5,
+      not: {
+        pattern: "^(?:---|\\+\\+\\+)\\s*(?:\\r?\\n|$)"
+      }
+    },
+    textFormat: {
+      type: "string",
+      description: "MIME type hint. Absent means text/plain.",
+      pattern: '^[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]{0,126}/[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]{0,126}(?:\\s*;\\s*[a-zA-Z0-9!#$&^_.+-]+=(?:[a-zA-Z0-9!#$&^_.+-]+|"[^"]*"))*$',
+      maxLength: 255
+    },
+    keywordsArray: {
+      type: "array",
+      minItems: 0,
+      maxItems: 100,
+      uniqueItems: true,
+      items: {
+        type: "string",
+        minLength: 1,
+        maxLength: 200
+      }
+    },
+    uriArray: {
+      type: "array",
+      maxItems: 200,
+      uniqueItems: true,
+      items: {
+        type: "string",
+        format: "uri"
+      }
+    },
+    identifierString: {
+      type: "string",
+      description: "Any identifier or identity link for the referenced resource: ISBN URN, DOI URL, NLK/LOD URI, vendor record ID, UUID URN, HTTPS/HTTP URI, or institutional control number. Use name for titles, not identifier.",
+      minLength: 1,
+      maxLength: 2048,
+      not: {
+        pattern: "^\\s*$"
+      }
+    },
+    identifierPropertyValue: {
       type: "object",
-      description: "\uB2E8\uC77C \uD30C\uC0DD \uBB38\uC11C(Article) \uCC98\uB9AC\uB97C \uC704\uD55C \uC601\uC18D\uC131 \uC2A4\uD0A4\uB9C8. \uAE30\uC874 YAML \uD504\uB860\uD2B8\uB9E4\uD130 \uC18D\uC131\uC744 \uC2A4\uD0A4\uB9C8 \uCD5C\uC0C1\uC704 \uD504\uB85C\uD37C\uD2F0\uB85C \uCD94\uCD9C\uD558\uC5EC \uAC80\uC0C9 \uC5D4\uC9C4 \uBC0F DB \uC778\uB371\uC11C\uC758 \uC9C1\uC811 \uC811\uADFC\uC744 \uD5C8\uC6A9\uD568.",
+      description: "Structured identifier using schema:PropertyValue. Recommended when the identifier type or authority must be preserved.",
+      required: [
+        "@type",
+        "value"
+      ],
+      properties: {
+        "@type": {
+          const: "PropertyValue"
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 200
+        },
+        propertyID: {
+          type: "string",
+          minLength: 1,
+          maxLength: 500
+        },
+        value: {
+          oneOf: [
+            {
+              type: "string",
+              minLength: 1,
+              maxLength: 2048
+            },
+            {
+              type: "number"
+            }
+          ]
+        },
+        valueReference: {
+          type: "string",
+          format: "uri"
+        }
+      },
+      anyOf: [
+        {
+          required: [
+            "name"
+          ]
+        },
+        {
+          required: [
+            "propertyID"
+          ]
+        }
+      ],
+      additionalProperties: false
+    },
+    identifierValue: {
+      oneOf: [
+        {
+          $ref: "#/$defs/identifierString"
+        },
+        {
+          $ref: "#/$defs/identifierPropertyValue"
+        }
+      ]
+    },
+    identifierSet: {
+      description: "A single identifier or a set of identifiers for the same referenced entity. BRO does not use a separate sameAs field.",
+      oneOf: [
+        {
+          $ref: "#/$defs/identifierValue"
+        },
+        {
+          type: "array",
+          minItems: 1,
+          maxItems: 50,
+          uniqueItems: true,
+          items: {
+            $ref: "#/$defs/identifierValue"
+          }
+        }
+      ]
+    },
+    agent: {
+      description: "Creator, curator, issuer, or responsible producer of a BRO object.",
+      oneOf: [
+        {
+          $ref: "#/$defs/agentPerson"
+        },
+        {
+          $ref: "#/$defs/agentOrganization"
+        },
+        {
+          $ref: "#/$defs/agentSoftware"
+        },
+        {
+          $ref: "#/$defs/agentUnknown"
+        },
+        {
+          $ref: "#/$defs/agentRole"
+        }
+      ]
+    },
+    agentPerson: {
+      type: "object",
+      required: [
+        "@type",
+        "name"
+      ],
+      properties: {
+        "@type": {
+          const: "Person"
+        },
+        "@id": {
+          $ref: "#/$defs/agentIri"
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        }
+      },
+      additionalProperties: false
+    },
+    agentOrganization: {
+      type: "object",
+      required: [
+        "@type",
+        "name"
+      ],
+      properties: {
+        "@type": {
+          const: "Organization"
+        },
+        "@id": {
+          anyOf: [
+            {
+              $ref: "#/$defs/uuidUrn"
+            },
+            {
+              $ref: "#/$defs/webIri"
+            }
+          ]
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        }
+      },
+      additionalProperties: false
+    },
+    agentSoftware: {
+      type: "object",
+      required: [
+        "@type",
+        "@id",
+        "name"
+      ],
+      properties: {
+        "@type": {
+          const: "SoftwareApplication"
+        },
+        "@id": {
+          $ref: "#/$defs/httpsIri"
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        },
+        softwareVersion: {
+          type: "string",
+          minLength: 1,
+          maxLength: 50
+        }
+      },
+      additionalProperties: false
+    },
+    agentUnknown: {
+      type: "object",
+      required: [
+        "@type"
+      ],
+      properties: {
+        "@type": {
+          const: "UnknownAgent"
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        }
+      },
+      additionalProperties: false
+    },
+    agentRole: {
+      type: "object",
+      required: [
+        "@type",
+        "agent"
+      ],
+      properties: {
+        "@type": {
+          const: "Role"
+        },
+        roleName: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        },
+        startDate: {
+          $ref: "#/$defs/rfc3339Date"
+        },
+        endDate: {
+          $ref: "#/$defs/rfc3339Date"
+        },
+        agent: {
+          oneOf: [
+            {
+              $ref: "#/$defs/agentPerson"
+            },
+            {
+              $ref: "#/$defs/agentOrganization"
+            },
+            {
+              $ref: "#/$defs/agentSoftware"
+            },
+            {
+              $ref: "#/$defs/agentUnknown"
+            }
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    agentArray: {
+      type: "array",
+      minItems: 1,
+      maxItems: 100,
+      uniqueItems: true,
+      items: {
+        $ref: "#/$defs/agent"
+      }
+    },
+    boundedJsonValue: {
+      oneOf: [
+        {
+          type: "string",
+          maxLength: 1e4
+        },
+        {
+          type: "number"
+        },
+        {
+          type: "boolean"
+        },
+        {
+          type: "null"
+        },
+        {
+          type: "array",
+          maxItems: 100
+        },
+        {
+          type: "object",
+          maxProperties: 50
+        }
+      ]
+    },
+    additionalPropertyValue: {
+      type: "object",
+      required: [
+        "@type",
+        "name",
+        "value"
+      ],
+      properties: {
+        "@type": {
+          const: "PropertyValue"
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 200
+        },
+        value: {
+          $ref: "#/$defs/boundedJsonValue"
+        },
+        propertyID: {
+          type: "string",
+          minLength: 1,
+          maxLength: 500
+        },
+        valueReference: {
+          type: "string",
+          format: "uri"
+        },
+        unitCode: {
+          type: "string",
+          maxLength: 50
+        },
+        unitText: {
+          type: "string",
+          maxLength: 50
+        }
+      },
+      additionalProperties: false
+    },
+    additionalPropertyArray: {
+      type: "array",
+      maxItems: 200,
+      items: {
+        $ref: "#/$defs/additionalPropertyValue"
+      }
+    },
+    extensionValue: {
+      description: "Value for a colon-prefixed extension property. Kept shallow to prevent payload bombs.",
+      oneOf: [
+        {
+          type: "string",
+          maxLength: 1e4
+        },
+        {
+          type: "number"
+        },
+        {
+          type: "boolean"
+        },
+        {
+          type: "null"
+        },
+        {
+          type: "object",
+          maxProperties: 20
+        },
+        {
+          type: "array",
+          maxItems: 100
+        }
+      ]
+    },
+    workType: {
+      type: "string",
+      pattern: "^[A-Z][A-Za-z0-9]{1,79}$",
+      description: "Schema.org CreativeWork type token. Recommended values: CreativeWork, Book, Article, ScholarlyArticle, WebPage, Chapter, Periodical, Collection, Dataset, Report. Use CreativeWork when unsure."
+    },
+    workReference: {
+      type: "object",
+      description: "A direct reference to an external bibliographic or cultural work. It is intentionally not limited to books.",
+      required: [
+        "@type"
+      ],
+      properties: {
+        "@type": {
+          $ref: "#/$defs/workType"
+        },
+        identifier: {
+          $ref: "#/$defs/identifierSet"
+        },
+        name: {
+          $ref: "#/$defs/plainText"
+        },
+        creatorName: {
+          oneOf: [
+            {
+              type: "string",
+              minLength: 1,
+              maxLength: 2e3
+            },
+            {
+              type: "array",
+              minItems: 1,
+              maxItems: 50,
+              uniqueItems: true,
+              items: {
+                type: "string",
+                minLength: 1,
+                maxLength: 1e3
+              }
+            }
+          ]
+        },
+        publisherName: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1e3
+        },
+        datePublished: {
+          $ref: "#/$defs/bibliographicDate"
+        },
+        bookEdition: {
+          type: "string",
+          minLength: 1,
+          maxLength: 500
+        },
+        inLanguage: {
+          $ref: "#/$defs/languageTagArray"
+        },
+        keywords: {
+          $ref: "#/$defs/keywordsArray"
+        },
+        image: {
+          $ref: "#/$defs/uriArray"
+        },
+        additionalProperty: {
+          $ref: "#/$defs/additionalPropertyArray"
+        },
+        bibliographicLevel: {
+          $ref: "#/$defs/bibliographicLevel"
+        },
+        url: {
+          $ref: "#/$defs/webIriSet"
+        },
+        exampleOfWork: {
+          $ref: "#/$defs/workIdentityReference"
+        }
+      },
+      anyOf: [
+        {
+          required: [
+            "identifier"
+          ]
+        },
+        {
+          required: [
+            "name"
+          ]
+        }
+      ],
+      additionalProperties: false
+    },
+    broReference: {
+      type: "object",
+      description: "Reference to another BRO entity. Use this when list items have their own Reaction or ReactionAbstract object.",
+      required: [
+        "@id"
+      ],
+      properties: {
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
+        "@type": {
+          type: "string",
+          enum: [
+            "Reaction",
+            "ReactionAbstract"
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    targetReference: {
+      oneOf: [
+        {
+          $ref: "#/$defs/workReference"
+        },
+        {
+          $ref: "#/$defs/broReference"
+        }
+      ]
+    },
+    listElement: {
+      oneOf: [
+        {
+          $ref: "#/$defs/workReference"
+        },
+        {
+          $ref: "#/$defs/listEntityReference"
+        }
+      ]
+    },
+    reactionType: {
+      type: "string",
+      enum: [
+        "Response",
+        "Listing",
+        "Unspecified"
+      ],
+      default: "Unspecified",
+      description: "Response = review/comment/critique with non-empty text. Listing = inclusion/recommendation/list-entry action. Unspecified = publisher intentionally declines classification."
+    },
+    Reaction: {
+      type: "object",
+      title: "Reaction",
+      description: "A review, comment, critique, recommendation reason, or list-inclusion reaction about one or more works.",
       required: [
         "@context",
         "@type",
         "@id",
+        "reactionType",
         "about",
         "text",
         "creator",
         "dateCreated"
       ],
       properties: {
-        "@context": { const: "https://schema.org" },
-        "@type": { const: "Article" },
-        "@id": { $ref: "#/$defs/urnUuidOnly" },
+        "@context": {
+          $ref: "#/$defs/contextRef"
+        },
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
         name: {
-          type: "string",
-          description: "\uD30C\uC0DD \uBB38\uC11C \uC790\uCCB4\uC758 \uC81C\uBAA9. \uC2DC\uC2A4\uD15C \uBC18\uD658 \uC2DC Article \uC5D4\uD2F0\uD2F0\uC758 \uCD5C\uC0C1\uC704 \uBA85\uCE6D\uC73C\uB85C \uC0AC\uC6A9\uB428."
+          $ref: "#/$defs/plainText"
         },
-        aboutName: {
-          type: "string",
-          description: "\uD604\uC7AC \uBB38\uC11C\uAC00 \uD0C0\uAC9F\uD305(about)\uD558\uACE0 \uC788\uB294 \uC6D0\uBCF8 \uCF54\uC5B4 \uC800\uC791\uBB3C\uC758 \uD14D\uC2A4\uD2B8 \uBA85\uCE6D(name). \uC6D0\uBB38 URN \uCC38\uC870\uAC00 \uC2E4\uD328\uD558\uAC70\uB098 \uC9C0\uC5F0 \uB85C\uB529\uB420 \uACBD\uC6B0\uC758 \uB514\uADF8\uB808\uC774\uB4DC(Degrade) \uCC98\uB9AC\uB97C \uC704\uD55C \uC5ED\uC815\uADDC\uD654 \uB370\uC774\uD130. \uC2A4\uD0A4\uB9C8 \uC804\uC5ED\uC758 \uBA85\uBA85 \uADDC\uCE59(Naming Convention) \uD1B5\uC77C\uC131\uC5D0 \uB530\uB77C Title \uB300\uC2E0 Name\uC744 \uC811\uBBF8\uC0AC\uB85C \uAC15\uC81C\uD568."
+        byline: {
+          $ref: "#/$defs/bylineString"
         },
-        aboutCreator: {
-          type: "string",
-          description: "\uD604\uC7AC \uBB38\uC11C\uAC00 \uD0C0\uAC9F\uD305\uD558\uB294 \uC6D0\uBCF8 \uCF54\uC5B4 \uC800\uC791\uBB3C\uC758 \uC6D0\uC791\uC790 \uD14D\uC2A4\uD2B8 \uD45C\uAE30."
+        creator: {
+          $ref: "#/$defs/agentArray"
         },
-        articleByline: {
-          type: "string",
-          description: "\uD604\uC7AC \uD30C\uC0DD \uBB38\uC11C \uC791\uC131\uC790\uC758 \uD06C\uB808\uB527 \uB77C\uC778 \uD45C\uAE30."
+        dateCreated: {
+          $ref: "#/$defs/rfc3339DateTime"
         },
-        dateCreated: { $ref: "#/$defs/strictDateTime" },
-        dateModified: { $ref: "#/$defs/strictDateTime" },
-        datePublished: { $ref: "#/$defs/strictDateTime" },
-        version: { type: ["string", "number"] },
+        dateModified: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        datePublished: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        license: {
+          $ref: "#/$defs/httpsIri"
+        },
+        inLanguage: {
+          $ref: "#/$defs/languageTagArray"
+        },
+        keywords: {
+          $ref: "#/$defs/keywordsArray"
+        },
+        image: {
+          $ref: "#/$defs/uriArray"
+        },
+        citation: {
+          $ref: "#/$defs/uriArray"
+        },
+        additionalProperty: {
+          $ref: "#/$defs/additionalPropertyArray"
+        },
+        "@type": {
+          const: "Reaction"
+        },
+        reactionType: {
+          $ref: "#/$defs/reactionType"
+        },
         about: {
           type: "array",
           minItems: 1,
+          maxItems: 5,
           uniqueItems: true,
-          description: "\uD30C\uC0DD \uBB38\uC11C\uAC00 \uD0C0\uAC9F\uD305\uD558\uB294 \uCF54\uC5B4 \uC800\uC791\uBB3C \uC5D4\uD2F0\uD2F0\uC758 \uC2DD\uBCC4\uC790 \uBB36\uC74C. \uB2E4\uC911 \uD310\uBCF8 \uBC14\uC778\uB529 \uC2DC \uBCF5\uC218 \uC6D0\uC18C\uB97C \uD5C8\uC6A9\uD568.",
-          items: { $ref: "#/$defs/terminalIdentifier" }
-        },
-        text: { $ref: "#/$defs/pureText" },
-        inLanguage: { $ref: "#/$defs/languageArray" },
-        keywords: { $ref: "#/$defs/keywordsArray" },
-        image: {
-          type: "array",
-          items: { type: "string", format: "uri" },
-          description: "\uAD00\uB828 \uC774\uBBF8\uC9C0 URL \uBC30\uC5F4."
-        },
-        citation: {
-          type: "array",
-          items: { type: "string", format: "uri" },
-          description: "\uCC38\uACE0 \uBB38\uD5CC \uB610\uB294 \uC6D0\uBB38 URL \uBAA9\uB85D."
-        },
-        abstract: {
-          type: "array",
-          description: "\uD604\uC7AC \uBB38\uC11C(Article)\uC5D0 \uC885\uC18D\uB41C \uD30C\uC0DD \uC694\uC57D\uBCF8\uC758 \uC2DD\uBCC4\uC790(URN) \uBC30\uC5F4. 1:N \uAD6C\uC870\uC758 \uB514\uC2A4\uD06C \uC911\uBCF5 \uC801\uC7AC\uB97C \uB9C9\uAE30 \uC704\uD55C \uC2DD\uBCC4\uC790 \uCC38\uC870. \uBCF8\uBB38 \uB0B4\uD3EC \uC808\uB300 \uAE08\uC9C0.",
           items: {
-            type: "object",
-            required: ["@id"],
-            properties: { "@id": { $ref: "#/$defs/urnUuidOnly" } }
+            $ref: "#/$defs/targetReference"
           }
         },
-        creator: {
-          type: "array",
-          minItems: 1,
-          uniqueItems: true,
-          items: { $ref: "#/$defs/creatorRoot" }
+        text: {
+          $ref: "#/$defs/bodyText"
         },
-        additionalProperty: { $ref: "#/$defs/additionalPropertyArray" }
-      }
+        textFormat: {
+          $ref: "#/$defs/textFormat"
+        }
+      },
+      patternProperties: {
+        "^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+          $ref: "#/$defs/extensionValue"
+        }
+      },
+      additionalProperties: false,
+      allOf: [
+        {
+          if: {
+            properties: {
+              reactionType: {
+                const: "Response"
+              }
+            },
+            required: [
+              "reactionType"
+            ]
+          },
+          then: {
+            properties: {
+              text: {
+                minLength: 1
+              }
+            }
+          }
+        }
+      ]
     },
-    BroAbstract: {
+    ReactionAbstract: {
       type: "object",
-      description: "\uAD6C\uC870\uD654\uB41C \uC694\uC57D \uB370\uC774\uD130. isBasedOn \uC18D\uC131\uC744 \uD1B5\uD574 \uC6D0\uBCF8 \uC5ED\uCC38\uC870.",
+      title: "ReactionAbstract",
+      description: "A structured summary derived from a Reaction, ReactionList, or external work.",
       required: [
         "@context",
         "@type",
@@ -148,617 +805,1071 @@ var bro_v1_schema_default = {
         "isBasedOn"
       ],
       properties: {
-        "@context": { const: "https://schema.org" },
-        "@type": { const: "CreativeWork" },
-        "@id": { $ref: "#/$defs/urnUuidOnly" },
+        "@context": {
+          $ref: "#/$defs/contextRef"
+        },
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
         name: {
-          type: "string",
-          description: "\uC694\uC57D \uB370\uC774\uD130\uC758 \uD14D\uC2A4\uD2B8 \uBA85\uCE6D(\uC81C\uBAA9). \uC2A4\uD0A4\uB9C8 \uC804\uC5ED\uC758 \uC2DD\uBCC4 \uD45C\uC81C \uB2E8\uC77C\uD654 \uC815\uCC45\uC5D0 \uB530\uB77C name \uC18D\uC131\uC744 \uD560\uB2F9\uD568."
+          $ref: "#/$defs/plainText"
         },
-        dateCreated: { $ref: "#/$defs/strictDateTime" },
-        dateModified: { $ref: "#/$defs/strictDateTime" },
-        version: { type: ["string", "number"] },
-        text: { $ref: "#/$defs/pureText" },
-        inLanguage: { $ref: "#/$defs/languageArray" },
-        keywords: { $ref: "#/$defs/keywordsArray" },
-        image: {
-          type: "array",
-          items: { type: "string", format: "uri" },
-          description: "\uAD00\uB828 \uC774\uBBF8\uC9C0 URL \uBC30\uC5F4."
-        },
-        citation: {
-          type: "array",
-          items: { type: "string", format: "uri" },
-          description: "\uCC38\uACE0 \uBB38\uD5CC \uB610\uB294 \uC6D0\uBB38 URL \uBAA9\uB85D."
+        byline: {
+          $ref: "#/$defs/bylineString"
         },
         creator: {
-          type: "array",
-          minItems: 1,
-          uniqueItems: true,
-          items: { $ref: "#/$defs/creatorRoot" }
+          $ref: "#/$defs/agentArray"
+        },
+        dateCreated: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        dateModified: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        datePublished: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        license: {
+          $ref: "#/$defs/httpsIri"
+        },
+        inLanguage: {
+          $ref: "#/$defs/languageTagArray"
+        },
+        keywords: {
+          $ref: "#/$defs/keywordsArray"
+        },
+        image: {
+          $ref: "#/$defs/uriArray"
+        },
+        citation: {
+          $ref: "#/$defs/uriArray"
+        },
+        additionalProperty: {
+          $ref: "#/$defs/additionalPropertyArray"
+        },
+        "@type": {
+          const: "ReactionAbstract"
+        },
+        text: {
+          allOf: [
+            {
+              $ref: "#/$defs/bodyText"
+            },
+            {
+              minLength: 1
+            }
+          ]
+        },
+        textFormat: {
+          $ref: "#/$defs/textFormat"
         },
         isBasedOn: {
           type: "array",
           minItems: 1,
-          description: "\uC774 \uC694\uC57D\uC774 \uAE30\uBC18\uD558\uACE0 \uC788\uB294 \uC6D0\uBCF8 \uC5D4\uD2F0\uD2F0(Article \uB610\uB294 \uB3C4\uC11C \uB4F1 CreativeWork)\uC758 \uB2E8\uBC29\uD5A5 \uC678\uBD80 \uC2DD\uBCC4\uC790 \uD3EC\uC778\uD130.",
-          items: { $ref: "#/$defs/terminalIdentifier" }
-        },
-        additionalProperty: { $ref: "#/$defs/additionalPropertyArray" }
-      }
-    },
-    pureText: {
-      type: "string",
-      minLength: 0,
-      maxLength: 3e5,
-      description: "\uC21C\uC218 \uBCF8\uBB38 \uBB38\uC790\uC5F4 (\uC8FC\uB85C Markdown \uAD6C\uC870). YAML Frontmatter \uCEA1\uC290\uD654\uB97C \uC804\uBA74 \uD3D0\uAE30\uD568. \uC778\uC785 \uD30C\uC774\uD504\uB77C\uC778\uC5D0\uC11C \uBCF8 \uD544\uB4DC \uB0B4\uC758 \uBA54\uD0C0\uB370\uC774\uD130 \uC740\uB2C9\uC744 \uAC10\uC9C0\uD560 \uACBD\uC6B0 \uD398\uC774\uB85C\uB4DC \uC218\uC6A9\uC744 \uAC70\uBD80(Reject)\uD558\uBA70, \uBAA8\uB4E0 \uBA54\uD0C0 \uC18D\uC131\uC740 JSON\uC758 1\uAE09 \uAC1D\uCCB4 \uB610\uB294 additionalProperty\uB85C \uBD84\uB9AC \uCD94\uCD9C\uB418\uC5B4\uC57C \uD568."
-    },
-    languageArray: {
-      type: "array",
-      items: {
-        type: "string",
-        pattern: "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)?$"
-      },
-      description: "BCP 47 / ISO 639 \uC5B8\uC5B4 \uCF54\uB4DC \uBAA9\uB85D."
-    },
-    keywordsArray: {
-      type: "array",
-      items: { type: "string" },
-      description: "\uBD84\uB958\uC6A9 \uD575\uC2EC\uC5B4 \uBAA9\uB85D."
-    },
-    additionalPropertyArray: {
-      type: "array",
-      description: "Schema.org \uD45C\uC900 PropertyValue \uAE30\uBC18 \uB3D9\uC801 \uBA54\uD0C0\uB370\uC774\uD130 \uD655\uC7A5 \uCEE8\uD14C\uC774\uB108. \uB3C4\uC11C\uAD00\uC774\uB098 \uC11C\uBE44\uC2A4\uBCC4\uB85C \uD30C\uD3B8\uD654\uB41C \uCEE4\uC2A4\uD140 \uBA54\uD0C0\uB370\uC774\uD130(\uC608: \uD3C9\uC810, \uC644\uB3C5 \uC5EC\uBD80, \uCD94\uCC9C \uC5F0\uB839 \uB4F1)\uB97C \uC2A4\uD0A4\uB9C8\uB97C \uC624\uC5FC\uC2DC\uD0A4\uC9C0 \uC54A\uACE0 \uC218\uC6A9\uD568. NoSQL\uC774\uB098 RDBMS\uC758 JSON \uCEEC\uB7FC\uC5D0\uC11C \uC644\uBCBD\uD55C \uAE30\uACC4\uC801 \uC778\uB371\uC2F1\uC774 \uAC00\uB2A5\uD568.",
-      items: {
-        type: "object",
-        required: ["@type", "name", "value"],
-        properties: {
-          "@type": { const: "PropertyValue" },
-          name: {
-            type: "string",
-            description: "\uB3D9\uC801 \uC18D\uC131\uC758 \uC2DD\uBCC4 \uD0A4(Key)"
-          },
-          value: {
-            description: "\uB3D9\uC801 \uC18D\uC131\uC758 \uAC12(Value). \uC6D0\uC2DC \uD0C0\uC785 \uBC0F \uAC1D\uCCB4 \uD5C8\uC6A9."
+          maxItems: 10,
+          uniqueItems: true,
+          items: {
+            $ref: "#/$defs/basedOnReference"
           }
         }
+      },
+      patternProperties: {
+        "^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+          $ref: "#/$defs/extensionValue"
+        }
+      },
+      additionalProperties: false
+    },
+    ReactionList: {
+      type: "object",
+      title: "ReactionList",
+      description: "A persistent recommendation, review, reading, or curation list. The list itself is meaningful metadata.",
+      required: [
+        "@context",
+        "@type",
+        "@id",
+        "creator",
+        "itemListElement",
+        "dateCreated"
+      ],
+      properties: {
+        "@context": {
+          $ref: "#/$defs/contextRef"
+        },
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
+        name: {
+          $ref: "#/$defs/plainText"
+        },
+        byline: {
+          $ref: "#/$defs/bylineString"
+        },
+        creator: {
+          $ref: "#/$defs/agentArray"
+        },
+        dateCreated: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        dateModified: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        datePublished: {
+          $ref: "#/$defs/rfc3339DateTime"
+        },
+        license: {
+          $ref: "#/$defs/httpsIri"
+        },
+        inLanguage: {
+          $ref: "#/$defs/languageTagArray"
+        },
+        keywords: {
+          $ref: "#/$defs/keywordsArray"
+        },
+        image: {
+          $ref: "#/$defs/uriArray"
+        },
+        citation: {
+          $ref: "#/$defs/uriArray"
+        },
+        additionalProperty: {
+          $ref: "#/$defs/additionalPropertyArray"
+        },
+        "@type": {
+          const: "ReactionList"
+        },
+        itemListElement: {
+          type: "array",
+          minItems: 0,
+          maxItems: 1e4,
+          items: {
+            $ref: "#/$defs/listElement"
+          }
+        }
+      },
+      patternProperties: {
+        "^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+          $ref: "#/$defs/extensionValue"
+        }
+      },
+      additionalProperties: false
+    },
+    bibliographicLevel: {
+      type: "string",
+      enum: [
+        "Work",
+        "Edition",
+        "Item",
+        "Unspecified"
+      ],
+      description: "Approximate bibliographic level of this reference. Work: abstract work level; Edition: manifestation/edition/publication level; Item: holding/copy/item level; Unspecified: source does not allow a decision."
+    },
+    listEntityReference: {
+      type: "object",
+      description: "Reference to a BRO Reaction or ReactionAbstract used as a list element. ReactionList nesting is intentionally not used for list elements in v1.0.",
+      required: [
+        "@id"
+      ],
+      properties: {
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
+        "@type": {
+          type: "string",
+          enum: [
+            "Reaction",
+            "ReactionAbstract"
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    basedOnEntityReference: {
+      type: "object",
+      description: "Reference to another BRO entity used as a source for a ReactionAbstract.",
+      required: [
+        "@id"
+      ],
+      properties: {
+        "@id": {
+          $ref: "#/$defs/entityIri"
+        },
+        "@type": {
+          type: "string",
+          enum: [
+            "Reaction",
+            "ReactionAbstract",
+            "ReactionList"
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    basedOnReference: {
+      oneOf: [
+        {
+          $ref: "#/$defs/workReference"
+        },
+        {
+          $ref: "#/$defs/basedOnEntityReference"
+        }
+      ]
+    },
+    workIdentityReference: {
+      type: "object",
+      description: "Optional abstract-work-level reference for an edition, translation, manifestation, or item. Advanced use; general users may omit it.",
+      required: [
+        "@type"
+      ],
+      properties: {
+        "@type": {
+          const: "CreativeWork"
+        },
+        identifier: {
+          $ref: "#/$defs/identifierSet"
+        },
+        name: {
+          $ref: "#/$defs/plainText"
+        },
+        creatorName: {
+          oneOf: [
+            {
+              type: "string",
+              minLength: 1,
+              maxLength: 2e3
+            },
+            {
+              type: "array",
+              minItems: 1,
+              maxItems: 50,
+              uniqueItems: true,
+              items: {
+                type: "string",
+                minLength: 1,
+                maxLength: 1e3
+              }
+            }
+          ]
+        }
+      },
+      anyOf: [
+        {
+          required: [
+            "identifier"
+          ]
+        },
+        {
+          required: [
+            "name"
+          ]
+        }
+      ],
+      additionalProperties: false
+    },
+    webIriArray: {
+      type: "array",
+      minItems: 1,
+      maxItems: 200,
+      uniqueItems: true,
+      items: {
+        $ref: "#/$defs/webIri"
       }
     },
-    urnIdentifier: {
-      type: "string",
-      description: "[BASE_PRIMITIVES: \uC6D0\uC2DC \uB370\uC774\uD130 \uACC4\uCE35 \uC2DD\uBCC4\uC790] \uC2DC\uC2A4\uD15C \uB808\uBCA8\uC758 \uC18C\uBB38\uC790 URN Scheme \uC815\uADDC\uD654\uB97C \uC804\uC81C\uB85C \uD55C \uC815\uADDC\uC2DD \uC9D1\uD569.",
+    webIriSet: {
+      description: "One or more HTTP/HTTPS URLs.",
       oneOf: [
-        { pattern: "^urn:isbn:(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$" },
-        { pattern: "^urn:doi:10\\.\\d{4,9}\\/[-._;()/:A-Za-z0-9]+$" },
-        { pattern: "^urn:uci:[a-zA-Z0-9]{3,10}[:\\-+][a-zA-Z0-9\\-+.:]+$" },
-        { pattern: "^urn:kolis:[a-zA-Z0-9]+$" },
         {
-          pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+          $ref: "#/$defs/webIri"
         },
-        { pattern: "^urn:nlk:[a-zA-Z0-9]+$" }
+        {
+          type: "array",
+          minItems: 1,
+          maxItems: 200,
+          uniqueItems: true,
+          items: {
+            $ref: "#/$defs/webIri"
+          }
+        }
       ]
-    },
-    urnUuidOnly: {
-      type: "string",
-      pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[457][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
-      description: "UUID v4, v5, v7\uC744 \uC218\uC6A9\uD558\uB294 \uC815\uADDC\uD654\uB41C \uBC94\uC6A9 \uACE0\uC720 \uC2DD\uBCC4\uC790 URN \uD3EC\uB9F7."
-    },
-    strictDateTime: {
-      type: "string",
-      format: "date-time",
-      pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
-      description: "RFC 3339 \uAE30\uBC18 \uD0C0\uC784\uC2A4\uD0EC\uD504 \uAC15\uC81C \uADDC\uACA9. Z \uB610\uB294 \uC624\uD504\uC14B \uBA85\uC2DC\uB97C \uB204\uB77D\uD55C \uACBD\uC6B0 DB \uB370\uC774\uD130 \uC624\uC5FC\uC73C\uB85C \uAC04\uC8FC\uD558\uC5EC \uC778\uC785\uC744 \uCC28\uB2E8\uD568."
-    },
-    terminalIdentifier: {
-      type: "object",
-      description: "\uC21C\uD658 \uCC38\uC870(Billion Laughs \uB4F1) \uBB34\uD55C \uB8E8\uD504 \uB80C\uB354\uB9C1 \uACF5\uACA9\uC744 \uC6D0\uCC9C \uCC28\uB2E8\uD558\uAE30 \uC704\uD574 \uACC4\uCE35 \uAE4A\uC774\uB97C \uC81C\uD55C\uD55C \uD130\uBBF8\uB110 \uC2DD\uBCC4 \uAC1D\uCCB4.",
-      required: ["@type", "identifier"],
-      properties: {
-        "@type": { enum: ["Article", "CreativeWork"] },
-        identifier: { $ref: "#/$defs/urnIdentifier" }
-      },
-      additionalProperties: false
-    },
-    creatorRoot: {
-      type: "object",
-      description: "[CREATOR_ENTITIES] \uC791\uC131\uC790 \uC5D4\uD2F0\uD2F0 \uB2E4\uD615\uC131 \uACC4\uCE35. \uACF5\uACF5 \uBC0F \uBC95\uC778\uC740 @id \uAC15\uC81C \uAC80\uC99D, \uAC1C\uC778\uC740 \uC218\uC9D1 \uD30C\uD3B8\uD654 \uB300\uC751\uC744 \uC704\uD55C \uC120\uD0DD\uC801 @id \uD5C8\uC6A9, \uC775\uBA85\uC740 \uCD94\uC801 \uBD88\uAC00\uB2A5\uD55C \uC791\uC131\uC790 \uB370\uC774\uD130\uC758 \uC720\uC2E4 \uBC29\uC9C0 Fallback.",
-      required: ["@type"],
-      oneOf: [
-        { $ref: "#/$defs/creatorPerson" },
-        { $ref: "#/$defs/creatorAnonymous" },
-        { $ref: "#/$defs/creatorGovernment" },
-        { $ref: "#/$defs/creatorCorporation" },
-        { $ref: "#/$defs/creatorOrganization" },
-        { $ref: "#/$defs/creatorSoftware" }
-      ]
-    },
-    creatorPerson: {
-      type: "object",
-      required: ["@type", "name"],
-      properties: {
-        "@type": { const: "Person" },
-        name: { type: "string", maxLength: 1e3 },
-        "@id": {
-          description: "\uC778\uC99D\uB41C \uC0AC\uC6A9\uC790\uC5D0 \uD55C\uD574 \uBD80\uC5EC\uB418\uB294 URN/ORCID \uC2DD\uBCC4\uC790. \uD30C\uD3B8\uD654\uB41C \uC678\uBD80 \uB370\uC774\uD130 \uC2A4\uD06C\uB798\uD551 \uC778\uC785 \uC2DC \uC0DD\uB7B5\uC744 \uD5C8\uC6A9\uD568.",
-          oneOf: [
-            { $ref: "#/$defs/urnUuidOnly" },
-            { pattern: "^urn:orcid:\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$" }
-          ]
-        }
-      },
-      additionalProperties: false
-    },
-    creatorAnonymous: {
-      type: "object",
-      description: "\uB124\uD2B8\uC6CC\uD06C \uC778\uC785 \uB2E8\uB9D0 \uD639\uC740 \uC218\uC9D1 \uD30C\uC774\uD504\uB77C\uC778\uC5D0\uC11C \uC791\uC131\uC790 \uC5D4\uD2F0\uD2F0 \uCD94\uC801\uC5D0 \uC2E4\uD328\uD560 \uACBD\uC6B0, null/undefined\uB85C \uC778\uD55C \uC2A4\uD0A4\uB9C8 \uD06C\uB798\uC2DC\uB97C \uBC29\uC9C0\uD558\uB294 Fallback \uD0C0\uC785.",
-      required: ["@type"],
-      properties: {
-        "@type": { const: "Anonymous" },
-        name: { type: "string", default: "Anonymous", maxLength: 1e3 }
-      },
-      additionalProperties: false
-    },
-    creatorGovernment: {
-      type: "object",
-      required: ["@type", "@id", "name"],
-      properties: {
-        "@type": { const: "GovernmentOrganization" },
-        name: { type: "string", maxLength: 1e3 },
-        "@id": {
-          oneOf: [
-            { $ref: "#/$defs/urnUuidOnly" },
-            { pattern: "^urn:kr:govcode:\\d{7}$" }
-          ]
-        }
-      },
-      additionalProperties: false
-    },
-    creatorCorporation: {
-      type: "object",
-      required: ["@type", "@id", "name"],
-      properties: {
-        "@type": { const: "Corporation" },
-        name: { type: "string", maxLength: 1e3 },
-        "@id": {
-          oneOf: [
-            { $ref: "#/$defs/urnUuidOnly" },
-            { pattern: "^urn:kr:crn:\\d{13}$" }
-          ]
-        }
-      },
-      additionalProperties: false
-    },
-    creatorOrganization: {
-      type: "object",
-      required: ["@type", "@id", "name"],
-      properties: {
-        "@type": { const: "Organization" },
-        name: { type: "string", maxLength: 1e3 },
-        "@id": {
-          oneOf: [
-            { $ref: "#/$defs/urnUuidOnly" },
-            { pattern: "^urn:kr:npo:\\d{10}$" }
-          ]
-        }
-      },
-      additionalProperties: false
-    },
-    creatorSoftware: {
-      type: "object",
-      required: ["@type", "@id", "name"],
-      properties: {
-        "@type": { const: "SoftwareApplication" },
-        name: { type: "string", maxLength: 1e3 },
-        softwareVersion: { type: "string", maxLength: 50 },
-        "@id": { pattern: "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$" }
-      },
-      additionalProperties: false
     }
   }
 };
+
+// src/lib/bro-context.ts
+var broV1Context = {
+  "@context": {
+    "@version": 1.1,
+    "@protected": true,
+    "@base": "https://schema.slat.or.kr/bro/v1.0/instances/",
+    "schema": "https://schema.org/",
+    "bro": "https://schema.slat.or.kr/bro/v1.0/vocab#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "bibo": "http://purl.org/ontology/bibo/",
+    "nlon": "http://lod.nl.go.kr/ontology/",
+    "Reaction": "bro:Reaction",
+    "ReactionAbstract": "bro:ReactionAbstract",
+    "ReactionList": "bro:ReactionList",
+    "Person": "schema:Person",
+    "Organization": "schema:Organization",
+    "SoftwareApplication": "schema:SoftwareApplication",
+    "UnknownAgent": "bro:UnknownAgent",
+    "Role": "schema:Role",
+    "PropertyValue": "schema:PropertyValue",
+    "Book": "schema:Book",
+    "Article": "schema:Article",
+    "ScholarlyArticle": "schema:ScholarlyArticle",
+    "WebPage": "schema:WebPage",
+    "Dataset": "schema:Dataset",
+    "CreativeWork": "schema:CreativeWork",
+    "reactionType": {
+      "@id": "bro:reactionType",
+      "@type": "@vocab"
+    },
+    "Response": "bro:Response",
+    "Listing": "bro:Listing",
+    "Unspecified": "bro:Unspecified",
+    "name": "schema:name",
+    "byline": "bro:byline",
+    "text": "schema:text",
+    "textFormat": "schema:encodingFormat",
+    "creator": {
+      "@id": "schema:creator",
+      "@container": "@set"
+    },
+    "creatorName": "schema:creator",
+    "publisherName": "schema:publisher",
+    "bookEdition": "schema:bookEdition",
+    "roleName": "schema:roleName",
+    "agent": "schema:agent",
+    "identifier": {
+      "@id": "schema:identifier",
+      "@container": "@set"
+    },
+    "about": {
+      "@id": "schema:about",
+      "@container": "@set"
+    },
+    "isBasedOn": {
+      "@id": "schema:isBasedOn",
+      "@container": "@set"
+    },
+    "itemListElement": {
+      "@id": "schema:itemListElement",
+      "@container": "@list"
+    },
+    "keywords": {
+      "@id": "schema:keywords",
+      "@container": "@set"
+    },
+    "image": {
+      "@id": "schema:image",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "citation": {
+      "@id": "schema:citation",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "inLanguage": {
+      "@id": "schema:inLanguage",
+      "@container": "@set"
+    },
+    "license": {
+      "@id": "schema:license",
+      "@type": "@id"
+    },
+    "dateCreated": {
+      "@id": "schema:dateCreated",
+      "@type": "xsd:dateTime"
+    },
+    "dateModified": {
+      "@id": "schema:dateModified",
+      "@type": "xsd:dateTime"
+    },
+    "datePublished": "schema:datePublished",
+    "startDate": {
+      "@id": "schema:startDate",
+      "@type": "xsd:date"
+    },
+    "endDate": {
+      "@id": "schema:endDate",
+      "@type": "xsd:date"
+    },
+    "softwareVersion": "schema:softwareVersion",
+    "additionalProperty": {
+      "@id": "schema:additionalProperty",
+      "@container": "@set"
+    },
+    "value": "schema:value",
+    "valueReference": {
+      "@id": "schema:valueReference",
+      "@type": "@id"
+    },
+    "propertyID": "schema:propertyID",
+    "unitCode": "schema:unitCode",
+    "unitText": "schema:unitText",
+    "bibliographicLevel": {
+      "@id": "bro:bibliographicLevel",
+      "@type": "@vocab"
+    },
+    "Work": "bro:WorkLevel",
+    "Edition": "bro:EditionLevel",
+    "Item": "bro:ItemLevel",
+    "@vocab": "https://schema.org/",
+    "Chapter": "schema:Chapter",
+    "Periodical": "schema:Periodical",
+    "Collection": "schema:Collection",
+    "Report": "schema:Report",
+    "url": {
+      "@id": "schema:url",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "exampleOfWork": {
+      "@id": "schema:exampleOfWork"
+    }
+  }
+};
+
+// src/lib/bro-vocab.ts
+var broV1VocabTurtle = '@prefix bro:    <https://schema.slat.or.kr/bro/v1.0/vocab#> .\n@prefix schema: <https://schema.org/> .\n@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .\n\nbro:Reaction         a rdfs:Class ; rdfs:subClassOf schema:CreativeWork .\nbro:ReactionAbstract a rdfs:Class ; rdfs:subClassOf schema:CreativeWork .\nbro:ReactionList     a rdfs:Class ; rdfs:subClassOf schema:ItemList .\nbro:UnknownAgent     a rdfs:Class ; rdfs:subClassOf schema:Agent ;\n                     rdfs:comment "Explicit declaration that the publisher cannot identify the agent. Each instance is a fresh blank node by design; no global singleton." .\n\nbro:reactionType a rdf:Property ; rdfs:subPropertyOf schema:additionalType .\nbro:Response     a bro:ReactionType .\nbro:Listing      a bro:ReactionType .\nbro:Unspecified  a bro:ReactionType .\n\nbro:byline a rdf:Property ; rdfs:subPropertyOf schema:creditText .\nbro:bibliographicLevel a rdf:Property ; rdfs:subPropertyOf schema:additionalType .\nbro:WorkLevel          a bro:BibliographicLevel .\nbro:EditionLevel       a bro:BibliographicLevel .\nbro:ItemLevel          a bro:BibliographicLevel .\n';
 
 // src/validator/index.ts
 import { Validator } from "@cfworker/json-schema";
 
 // src/lib/normalize.ts
-var URN_SCHEME_PREFIXES = [
-  "urn:isbn:",
-  "urn:doi:",
-  "urn:uci:",
-  "urn:kolis:",
-  "urn:uuid:",
-  "urn:orcid:",
-  "urn:isni:",
-  "urn:kr:govcode:",
-  "urn:kr:crn:",
-  "urn:kr:brn:",
-  "urn:kr:npo:",
-  "urn:lei:",
-  "urn:model:"
+var IDENTIFIER_KEYS = /* @__PURE__ */ new Set(["@id", "identifier", "license", "propertyID", "valueReference"]);
+var URI_SCHEME_NORMALIZERS = [
+  [/^urn:uuid:/i, "urn:uuid:"],
+  [/^urn:isbn:/i, "urn:isbn:"],
+  [/^mailto:/i, "mailto:"],
+  [/^https:\/\/doi\.org\//i, "https://doi.org/"],
+  [/^https:\/\/orcid\.org\//i, "https://orcid.org/"]
 ];
-function normalizeUrnScheme(urn) {
-  if (typeof urn !== "string") return urn;
-  const lower = urn.toLowerCase();
-  for (const prefix of URN_SCHEME_PREFIXES) {
-    if (lower.startsWith(prefix)) {
-      return prefix + urn.slice(prefix.length);
+function normalizeIdentifier(value) {
+  for (const [pattern, canonicalPrefix] of URI_SCHEME_NORMALIZERS) {
+    const match = value.match(pattern);
+    if (match) {
+      return canonicalPrefix + value.slice(match[0].length);
     }
   }
-  return urn;
+  return value;
 }
-var IDENTIFIER_KEYS = /* @__PURE__ */ new Set(["@id", "identifier"]);
+function normalizeUrnScheme(value) {
+  return normalizeIdentifier(value);
+}
 function normalizePayload(payload) {
   if (payload === null || payload === void 0) return payload;
   if (Array.isArray(payload)) {
-    for (let i = 0; i < payload.length; i++) {
-      payload[i] = normalizePayload(payload[i]);
+    for (let index = 0; index < payload.length; index += 1) {
+      payload[index] = normalizePayload(payload[index]);
     }
     return payload;
   }
   if (typeof payload === "object") {
-    const obj = payload;
-    for (const key of Object.keys(obj)) {
-      if (IDENTIFIER_KEYS.has(key) && typeof obj[key] === "string") {
-        obj[key] = normalizeUrnScheme(obj[key]);
-      } else if (typeof obj[key] === "object" && obj[key] !== null) {
-        normalizePayload(obj[key]);
+    const objectPayload = payload;
+    for (const key of Object.keys(objectPayload)) {
+      const value = objectPayload[key];
+      if (IDENTIFIER_KEYS.has(key) && typeof value === "string") {
+        objectPayload[key] = normalizeIdentifier(value);
+      } else if (value && typeof value === "object") {
+        normalizePayload(value);
       }
     }
-    return payload;
   }
   return payload;
 }
+function cloneAndNormalizePayload(payload) {
+  const cloned = typeof structuredClone === "function" ? structuredClone(payload) : JSON.parse(JSON.stringify(payload));
+  return normalizePayload(cloned);
+}
 
 // src/lib/bro-types.ts
-var CREATOR_TYPES = [
-  "Person",
-  "Anonymous",
-  "GovernmentOrganization",
-  "Corporation",
-  "Organization",
-  "SoftwareApplication"
+var BRO_CONTEXT_IRI = "https://schema.slat.or.kr/bro/v1.0/context.jsonld";
+var BRO_SCHEMA_IRI = "https://schema.slat.or.kr/bro/v1.0/schema.json";
+var BRO_VOCAB_IRI = "https://schema.slat.or.kr/bro/v1.0/vocab#";
+var BRO_ENTITY_TYPES = [
+  "Reaction",
+  "ReactionAbstract",
+  "ReactionList"
 ];
+var REACTION_TYPES = [
+  "Response",
+  "Listing",
+  "Unspecified"
+];
+var AGENT_TYPES = [
+  "Person",
+  "UnknownAgent",
+  "Organization",
+  "SoftwareApplication",
+  "Role"
+];
+function isBroPayload(value) {
+  if (!value || typeof value !== "object") return false;
+  const type = value["@type"];
+  return type === "Reaction" || type === "ReactionAbstract" || type === "ReactionList";
+}
+function isReaction(value) {
+  return isBroPayload(value) && value["@type"] === "Reaction";
+}
+function isReactionAbstract(value) {
+  return isBroPayload(value) && value["@type"] === "ReactionAbstract";
+}
+function isReactionList(value) {
+  return isBroPayload(value) && value["@type"] === "ReactionList";
+}
 
 // src/validator/index.ts
-var validator = new Validator(bro_v1_schema_default);
-function validateBroSchema(data) {
-  const result = validator.validate(data);
+var validator = new Validator(bro_v1_schema_default, "2020-12", false);
+function getTextPayload(value) {
+  if (!value || typeof value !== "object") return null;
+  const record = value;
+  return typeof record.text === "string" ? record.text : null;
+}
+function hasForbiddenFrontMatter(text) {
+  const withoutBom = text.replace(/^\uFEFF/, "");
+  return /^(---|\+\+\+)\s*(?:\r?\n|$)/.test(withoutBom);
+}
+function collectApplicationErrors(payload) {
+  const errors = [];
+  const text = getTextPayload(payload);
+  if (text !== null && hasForbiddenFrontMatter(text)) {
+    errors.push({
+      location: "/text",
+      instanceLocation: "/text",
+      keyword: "bro-no-frontmatter",
+      message: "BRO text MUST NOT begin with a YAML/TOML front-matter block.",
+      error: "BRO text MUST NOT begin with a YAML/TOML front-matter block."
+    });
+  }
+  return errors;
+}
+function normalizeSchemaError(error) {
+  const record = error;
+  const location = typeof record.instanceLocation === "string" ? record.instanceLocation : typeof record.location === "string" ? record.location : "/";
+  const message = typeof record.error === "string" ? record.error : typeof record.message === "string" ? record.message : "Schema validation failed.";
   return {
-    valid: result.valid,
-    errors: result.errors
+    location,
+    instanceLocation: location,
+    keyword: typeof record.keyword === "string" ? record.keyword : void 0,
+    message,
+    error: message
   };
+}
+function validateBroSchema(data, options = {}) {
+  const shouldNormalize = options.normalize !== false;
+  const payload = shouldNormalize ? options.mutate ? normalizePayload(data) : cloneAndNormalizePayload(data) : data;
+  const result = validator.validate(payload);
+  const schemaErrors = result.valid ? [] : result.errors.map(normalizeSchemaError);
+  const applicationErrors = result.valid ? collectApplicationErrors(payload) : [];
+  const errors = [...schemaErrors, ...applicationErrors];
+  return {
+    valid: errors.length === 0,
+    errors,
+    ...options.includeNormalizedPayload ? { normalizedPayload: payload } : {}
+  };
+}
+function assertBroSchema(data, options = {}) {
+  const result = validateBroSchema(data, options);
+  if (!result.valid) {
+    const first = result.errors[0];
+    throw new Error(first ? `${first.location}: ${first.message}` : "Invalid BRO payload.");
+  }
 }
 
 // src/lib/bibframe-converter.ts
-function convertBroToBibframe(payload) {
-  const isArticle = payload["@type"] === "Article";
-  const bfClass = isArticle ? "bf:Review" : "bf:Summary";
-  const relationProp = isArticle ? "bf:reviewOf" : "bf:summaryOf";
-  const contributions = payload.creator.map((agent) => {
-    let bfAgentType = "bf:Agent";
-    if (agent["@type"] === "Person") bfAgentType = "bf:Person";
-    if (agent["@type"] === "Anonymous") bfAgentType = "bf:Person";
-    if (["Organization", "GovernmentOrganization", "Corporation"].includes(agent["@type"])) {
-      bfAgentType = "bf:Organization";
+function agentLabel(agent) {
+  if (agent["@type"] === "Role") return agent.roleName || agentLabel(agent.agent);
+  if ("name" in agent && agent.name) return agent.name;
+  return "Unknown agent";
+}
+function agentType(agent) {
+  const concreteAgent = agent["@type"] === "Role" ? agent.agent : agent;
+  switch (concreteAgent["@type"]) {
+    case "Person":
+    case "UnknownAgent":
+      return "bf:Person";
+    case "Organization":
+      return "bf:Organization";
+    case "SoftwareApplication":
+      return "bf:Agent";
+    default:
+      return "bf:Agent";
+  }
+}
+function agentId(agent) {
+  const concreteAgent = agent["@type"] === "Role" ? agent.agent : agent;
+  return "@id" in concreteAgent ? concreteAgent["@id"] : void 0;
+}
+function contributionFromAgent(agent) {
+  const contribution = {
+    "@type": "bf:Contribution",
+    "bf:agent": {
+      "@type": agentType(agent),
+      "rdfs:label": agentLabel(agent)
     }
-    const agentEntry = {
-      "@type": bfAgentType,
-      "rdfs:label": "name" in agent && agent.name ? agent.name : "Anonymous"
+  };
+  const id = agentId(agent);
+  if (id) contribution["bf:agent"]["@id"] = id;
+  if (agent["@type"] === "Role" && agent.roleName) {
+    contribution["bf:role"] = {
+      "@type": "bf:Role",
+      "rdfs:label": agent.roleName
     };
-    if ("@id" in agent && agent["@id"]) {
-      agentEntry["@id"] = String(agent["@id"]);
-    }
-    return {
-      "@type": "bf:Contribution",
-      "bf:agent": agentEntry
-    };
-  });
-  const targets = isArticle ? payload.about : payload.isBasedOn;
-  const targetInstances = targets.map((t) => {
-    const instance = {
-      "@type": "bf:Instance",
-      "bf:identifiedBy": {
+  }
+  return contribution;
+}
+function isEntityReference(reference) {
+  return "@id" in reference;
+}
+function identifierLabel(identifier) {
+  if (typeof identifier === "string") return identifier;
+  const authority = identifier.propertyID ?? identifier.name ?? "PropertyValue";
+  return `${authority}:${String(identifier.value)}`;
+}
+function identifierValues(reference) {
+  const identifier = reference.identifier;
+  if (!identifier) return [];
+  if (Array.isArray(identifier)) return identifier.map(identifierLabel);
+  return [identifierLabel(identifier)];
+}
+function instanceFromWorkReference(reference) {
+  const identifiers = identifierValues(reference);
+  const instance = {
+    "@type": "bf:Instance",
+    ...reference.name ? { "rdfs:label": reference.name } : {},
+    ...identifiers.length > 0 ? {
+      "bf:identifiedBy": identifiers.map((identifier) => ({
         "@type": "bf:Identifier",
-        "rdf:value": String(t.identifier)
+        "rdf:value": identifier
+      }))
+    } : {}
+  };
+  if (identifiers[0]) {
+    instance["bf:instanceOf"] = {
+      "@id": identifiers[0],
+      "@type": `schema:${reference["@type"]}`
+    };
+  }
+  return instance;
+}
+function instanceFromReference(reference) {
+  if (isEntityReference(reference)) {
+    return {
+      "@type": "bf:Instance",
+      "bf:instanceOf": {
+        "@id": reference["@id"],
+        "@type": reference["@type"] ? `bro:${reference["@type"]}` : "bf:Work"
       }
     };
-    if (isArticle) {
-      const article = payload;
-      if (article.aboutName) {
-        instance["bf:title"] = {
-          "@type": "bf:Title",
-          "bf:mainTitle": article.aboutName
-        };
-      }
-      if (article.aboutCreator) {
-        instance["bf:responsibilityStatement"] = article.aboutCreator;
-      }
-    }
-    return instance;
-  });
-  const result = {
+  }
+  return instanceFromWorkReference(reference);
+}
+function itemNodeFromReference(reference) {
+  if (isEntityReference(reference)) {
+    return {
+      "@id": reference["@id"],
+      "@type": reference["@type"] ? `bro:${reference["@type"]}` : "bf:Work"
+    };
+  }
+  return {
+    ...instanceFromWorkReference(reference),
+    "@type": "bf:Instance"
+  };
+}
+function convertBroToBibframe(payload) {
+  const base = {
     "@context": {
-      "bf": "http://id.loc.gov/ontologies/bibframe/",
-      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-      "rdfs": "http://www.w3.org/2000/01/rdf-schema#"
+      bf: "http://id.loc.gov/ontologies/bibframe/",
+      rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+      schema: "https://schema.org/",
+      bro: "https://schema.slat.or.kr/bro/v1.0/vocab#"
     },
-    "@type": ["bf:Work", bfClass],
+    "@type": ["bf:Work"],
     "@id": payload["@id"],
-    [relationProp]: targetInstances,
     "bf:originDate": payload.dateCreated,
-    ...payload.dateModified && { "bf:changeDate": payload.dateModified },
-    "bf:contribution": contributions,
-    ...payload.name && {
+    ...payload.dateModified ? { "bf:changeDate": payload.dateModified } : {},
+    "bf:contribution": payload.creator.map(contributionFromAgent),
+    ...payload.name ? {
       "bf:title": {
         "@type": "bf:Title",
         "bf:mainTitle": payload.name
       }
-    },
-    // 순수 본문 매핑 (JSON Native)
-    "bf:note": {
-      "@type": "bf:Note",
-      "rdfs:label": payload.text
-    }
+    } : {}
   };
-  return result;
+  if (payload["@type"] === "Reaction") {
+    return {
+      ...base,
+      "@type": ["bf:Work", "bf:Review", "bro:Reaction"],
+      "bf:reviewOf": payload.about.map(instanceFromReference),
+      "bro:reactionType": `bro:${payload.reactionType}`,
+      "bf:note": {
+        "@type": "bf:Note",
+        "rdfs:label": payload.text
+      }
+    };
+  }
+  if (payload["@type"] === "ReactionAbstract") {
+    return {
+      ...base,
+      "@type": ["bf:Work", "bf:Summary", "bro:ReactionAbstract"],
+      "bf:summaryOf": payload.isBasedOn.map(instanceFromReference),
+      "bf:note": {
+        "@type": "bf:Note",
+        "rdfs:label": payload.text
+      }
+    };
+  }
+  return {
+    ...base,
+    "@type": ["bf:Work", "bf:Collection", "bro:ReactionList"],
+    "bf:hasItem": payload.itemListElement.map(itemNodeFromReference)
+  };
 }
 
 // src/lib/markdown-renderer.ts
-function yamlValue(value) {
+function yamlScalar(value) {
   if (value === null || value === void 0) return '""';
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  const str = String(value);
-  if (/[:#\[\]{}&*!|>'"%@`,\n]/.test(str) || str.trim() !== str || str === "") {
-    return `"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const text = String(value);
+  if (text === "" || text.trim() !== text || /[:#[\]{}&*!|>'"%@`,\n]/.test(text)) {
+    return JSON.stringify(text);
   }
-  return str;
+  return text;
 }
-function yamlStringArray(arr, indent = "") {
-  return arr.map((item) => `${indent}  - ${yamlValue(item)}`).join("\n");
+function yamlStringArray(key, values) {
+  if (!values || values.length === 0) return [];
+  return [key, ...values.map((value) => `  - ${yamlScalar(value)}`)];
 }
-function yamlCreators(creators, indent = "") {
-  return creators.map((c) => {
-    const lines = [];
-    lines.push(`${indent}  - type: ${yamlValue(c["@type"])}`);
-    if ("name" in c && c.name) {
-      lines.push(`${indent}    name: ${yamlValue(c.name)}`);
-    }
-    if ("@id" in c && c["@id"]) {
-      lines.push(`${indent}    id: ${yamlValue(String(c["@id"]))}`);
-    }
-    if (c["@type"] === "SoftwareApplication" && "softwareVersion" in c && c.softwareVersion) {
-      lines.push(`${indent}    softwareVersion: ${yamlValue(c.softwareVersion)}`);
-    }
-    return lines.join("\n");
-  }).join("\n");
+function yamlValueArray(key, value) {
+  if (!value) return [];
+  if (!Array.isArray(value)) return [`${key} ${yamlScalar(value)}`];
+  const indent = key.match(/^\s*/)?.[0] ?? "";
+  return [key, ...value.map((item) => `${indent}  - ${yamlScalar(item)}`)];
 }
-function yamlAdditionalProperty(props) {
-  return props.map((p) => {
-    return `  - name: ${yamlValue(p.name)}
-    value: ${yamlValue(p.value)}`;
-  }).join("\n");
+function renderIdentifierValue(identifier, indent) {
+  if (typeof identifier === "string") return [`${indent}- ${yamlScalar(identifier)}`];
+  const lines = [`${indent}- type: ${yamlScalar(identifier["@type"])}`];
+  if (identifier.name) lines.push(`${indent}  name: ${yamlScalar(identifier.name)}`);
+  if (identifier.propertyID) lines.push(`${indent}  propertyID: ${yamlScalar(identifier.propertyID)}`);
+  lines.push(`${indent}  value: ${yamlScalar(identifier.value)}`);
+  if (identifier.valueReference) lines.push(`${indent}  valueReference: ${yamlScalar(identifier.valueReference)}`);
+  return lines;
+}
+function renderIdentifierSet(reference, indent) {
+  if (!reference.identifier) return [];
+  const identifiers = Array.isArray(reference.identifier) ? reference.identifier : [reference.identifier];
+  return [`${indent}identifier:`, ...identifiers.flatMap((identifier) => renderIdentifierValue(identifier, `${indent}  `))];
+}
+function renderWorkReference(reference, indent) {
+  const lines = [`${indent}- type: ${yamlScalar(reference["@type"])}`];
+  lines.push(...renderIdentifierSet(reference, `${indent}  `));
+  if (reference.name) lines.push(`${indent}  name: ${yamlScalar(reference.name)}`);
+  if (reference.creatorName) {
+    lines.push(...yamlValueArray(`${indent}  creatorName:`, reference.creatorName));
+  }
+  if (reference.publisherName) lines.push(`${indent}  publisherName: ${yamlScalar(reference.publisherName)}`);
+  if (reference.datePublished) lines.push(`${indent}  datePublished: ${yamlScalar(reference.datePublished)}`);
+  if (reference.bookEdition) lines.push(`${indent}  bookEdition: ${yamlScalar(reference.bookEdition)}`);
+  if (reference.bibliographicLevel) lines.push(`${indent}  bibliographicLevel: ${yamlScalar(reference.bibliographicLevel)}`);
+  if (reference.url) lines.push(...yamlValueArray(`${indent}  url:`, reference.url));
+  return lines;
+}
+function renderReferences(key, references) {
+  if (!references || references.length === 0) return [];
+  const lines = [`${key}:`];
+  for (const reference of references) {
+    if ("@id" in reference) {
+      lines.push(`  - id: ${yamlScalar(reference["@id"])}`);
+      if (reference["@type"]) lines.push(`    type: ${yamlScalar(reference["@type"])}`);
+    } else {
+      lines.push(...renderWorkReference(reference, "  "));
+    }
+  }
+  return lines;
+}
+function renderAgent(agent, indent = "  ") {
+  const lines = [`${indent}- type: ${yamlScalar(agent["@type"])}`];
+  if ("name" in agent && agent.name) lines.push(`${indent}  name: ${yamlScalar(agent.name)}`);
+  if ("@id" in agent && agent["@id"]) lines.push(`${indent}  id: ${yamlScalar(agent["@id"])}`);
+  if (agent["@type"] === "SoftwareApplication" && agent.softwareVersion) {
+    lines.push(`${indent}  softwareVersion: ${yamlScalar(agent.softwareVersion)}`);
+  }
+  if (agent["@type"] === "Role") {
+    if (agent.roleName) lines.push(`${indent}  roleName: ${yamlScalar(agent.roleName)}`);
+    if (agent.startDate) lines.push(`${indent}  startDate: ${yamlScalar(agent.startDate)}`);
+    if (agent.endDate) lines.push(`${indent}  endDate: ${yamlScalar(agent.endDate)}`);
+    lines.push(`${indent}  agent:`);
+    const nested = renderAgent(agent.agent, `${indent}    `);
+    lines.push(...nested.map((line) => line.replace(`${indent}    - `, `${indent}    `)));
+  }
+  return lines;
+}
+function renderCreators(creators) {
+  return ["creator:", ...creators.flatMap((creator) => renderAgent(creator))];
+}
+function renderAdditionalProperty(properties) {
+  if (!properties || properties.length === 0) return [];
+  const lines = ["additionalProperty:"];
+  for (const property of properties) {
+    lines.push(`  - name: ${yamlScalar(property.name)}`);
+    lines.push(`    value: ${yamlScalar(JSON.stringify(property.value))}`);
+    if (property.propertyID) lines.push(`    propertyID: ${yamlScalar(property.propertyID)}`);
+    if (property.valueReference) lines.push(`    valueReference: ${yamlScalar(property.valueReference)}`);
+    if (property.unitCode) lines.push(`    unitCode: ${yamlScalar(property.unitCode)}`);
+    if (property.unitText) lines.push(`    unitText: ${yamlScalar(property.unitText)}`);
+  }
+  return lines;
 }
 function renderBroToMarkdown(payload) {
-  const frontmatterLines = [];
-  frontmatterLines.push(`id: ${yamlValue(payload["@id"])}`);
-  frontmatterLines.push(`type: ${yamlValue(payload["@type"])}`);
-  frontmatterLines.push(`dateCreated: ${yamlValue(payload.dateCreated)}`);
-  if ("dateModified" in payload && payload.dateModified) {
-    frontmatterLines.push(`dateModified: ${yamlValue(payload.dateModified)}`);
+  const frontmatter = [
+    `id: ${yamlScalar(payload["@id"])}`,
+    `type: ${yamlScalar(payload["@type"])}`,
+    `dateCreated: ${yamlScalar(payload.dateCreated)}`
+  ];
+  if (payload.name) frontmatter.push(`name: ${yamlScalar(payload.name)}`);
+  if (payload.byline) frontmatter.push(`byline: ${yamlScalar(payload.byline)}`);
+  if (payload.dateModified) frontmatter.push(`dateModified: ${yamlScalar(payload.dateModified)}`);
+  if (payload.license) frontmatter.push(`license: ${yamlScalar(payload.license)}`);
+  if (payload["@type"] === "Reaction") {
+    frontmatter.push(`reactionType: ${yamlScalar(payload.reactionType)}`);
+    if (payload.datePublished) frontmatter.push(`datePublished: ${yamlScalar(payload.datePublished)}`);
+    frontmatter.push(...renderReferences("about", payload.about));
   }
-  if ("datePublished" in payload && payload.datePublished) {
-    frontmatterLines.push(`datePublished: ${yamlValue(payload.datePublished)}`);
+  if (payload["@type"] === "ReactionAbstract") {
+    if (payload.datePublished) frontmatter.push(`datePublished: ${yamlScalar(payload.datePublished)}`);
+    frontmatter.push(...renderReferences("isBasedOn", payload.isBasedOn));
   }
-  if ("version" in payload && payload.version !== void 0) {
-    frontmatterLines.push(`version: ${yamlValue(payload.version)}`);
-  }
-  if ("name" in payload && payload.name) {
-    frontmatterLines.push(`name: ${yamlValue(payload.name)}`);
-  }
-  if (payload["@type"] === "Article") {
-    const article = payload;
-    if (article.aboutName) {
-      frontmatterLines.push(`aboutName: ${yamlValue(article.aboutName)}`);
-    }
-    if (article.aboutCreator) {
-      frontmatterLines.push(`aboutCreator: ${yamlValue(article.aboutCreator)}`);
-    }
-    if (article.articleByline) {
-      frontmatterLines.push(`articleByline: ${yamlValue(article.articleByline)}`);
-    }
-    frontmatterLines.push(`about:`);
-    for (const target of article.about) {
-      frontmatterLines.push(`  - type: ${yamlValue(target["@type"])}`);
-      frontmatterLines.push(`    identifier: ${yamlValue(target.identifier)}`);
+  if (payload["@type"] === "ReactionList") {
+    frontmatter.push("itemListElement:");
+    for (const element of payload.itemListElement) {
+      if ("@id" in element) {
+        frontmatter.push(`  - id: ${yamlScalar(element["@id"])}`);
+        if (element["@type"]) frontmatter.push(`    type: ${yamlScalar(element["@type"])}`);
+      } else {
+        frontmatter.push(...renderWorkReference(element, "  "));
+      }
     }
   }
-  if (payload["@type"] === "CreativeWork") {
-    const abstract = payload;
-    frontmatterLines.push(`isBasedOn:`);
-    for (const origin of abstract.isBasedOn) {
-      frontmatterLines.push(`  - type: ${yamlValue(origin["@type"])}`);
-      frontmatterLines.push(`    identifier: ${yamlValue(origin.identifier)}`);
-    }
-  }
-  if (payload["@type"] === "ItemList") {
-    const list = payload;
-    frontmatterLines.push(`itemListElement:`);
-    for (const element of list.itemListElement) {
-      frontmatterLines.push(`  - id: ${yamlValue(element["@id"])}`);
-    }
-  }
-  frontmatterLines.push(`creator:`);
-  frontmatterLines.push(yamlCreators(payload.creator));
-  if ("inLanguage" in payload && payload.inLanguage && payload.inLanguage.length > 0) {
-    frontmatterLines.push(`inLanguage:`);
-    frontmatterLines.push(yamlStringArray(payload.inLanguage));
-  }
-  if ("keywords" in payload && payload.keywords && payload.keywords.length > 0) {
-    frontmatterLines.push(`keywords:`);
-    frontmatterLines.push(yamlStringArray(payload.keywords));
-  }
-  if ("image" in payload && payload.image && payload.image.length > 0) {
-    frontmatterLines.push(`image:`);
-    frontmatterLines.push(yamlStringArray(payload.image));
-  }
-  if ("citation" in payload && payload.citation && payload.citation.length > 0) {
-    frontmatterLines.push(`citation:`);
-    frontmatterLines.push(yamlStringArray(payload.citation));
-  }
-  if ("additionalProperty" in payload && payload.additionalProperty && payload.additionalProperty.length > 0) {
-    frontmatterLines.push(`additionalProperty:`);
-    frontmatterLines.push(yamlAdditionalProperty(payload.additionalProperty));
-  }
-  const frontmatter = `---
-${frontmatterLines.join("\n")}
+  frontmatter.push(...renderCreators(payload.creator));
+  frontmatter.push(...yamlStringArray("inLanguage:", payload.inLanguage));
+  frontmatter.push(...yamlStringArray("keywords:", payload.keywords));
+  if ("image" in payload) frontmatter.push(...yamlStringArray("image:", payload.image));
+  if ("citation" in payload) frontmatter.push(...yamlStringArray("citation:", payload.citation));
+  frontmatter.push(...renderAdditionalProperty(payload.additionalProperty));
+  const metadata = `---
+${frontmatter.join("\n")}
 ---`;
-  const bodyText = "text" in payload && payload.text ? payload.text : "";
-  if (bodyText) {
-    return `${frontmatter}
+  const body = "text" in payload ? payload.text : "";
+  return body ? `${metadata}
 
-${bodyText}`;
-  }
-  return frontmatter;
+${body}` : metadata;
 }
 
 // src/lib/komarc-converter.ts
-function convertBroToKomarc(broPayload) {
-  if (isItemList(broPayload)) {
-    return broPayload.itemListElement.map((element) => {
-      const subfields552 = [
-        { code: "h", value: "https://schema.slat.or.kr/bro/v1/schema.json" }
-      ];
-      if (element["@id"]) {
-        subfields552.push({ code: "u", value: String(element["@id"]) });
+var BRO_SCHEMA_URI = "https://schema.slat.or.kr/bro/v1.0/schema.json";
+function yyyymmdd(dateTime) {
+  return dateTime.slice(0, 10).replace(/-/g, "");
+}
+function isEntityReference2(reference) {
+  return "@id" in reference;
+}
+function identifierLabel2(identifier) {
+  if (typeof identifier === "string") return identifier;
+  const authority = identifier.propertyID ?? identifier.name ?? "PropertyValue";
+  return `${authority}:${String(identifier.value)}`;
+}
+function identifierValues2(reference) {
+  const identifier = reference.identifier;
+  if (!identifier) return [];
+  if (Array.isArray(identifier)) return identifier.map(identifierLabel2);
+  return [identifierLabel2(identifier)];
+}
+function identifierField(identifier) {
+  if (identifier.startsWith("urn:isbn:")) {
+    return {
+      tag: "020",
+      indicator1: " ",
+      indicator2: " ",
+      subfields: [{ code: "a", value: identifier.replace(/^urn:isbn:/, "") }]
+    };
+  }
+  return {
+    tag: "024",
+    indicator1: "8",
+    indicator2: " ",
+    subfields: [{ code: "a", value: identifier }]
+  };
+}
+function titleField(reference) {
+  if (!reference.name) return null;
+  const subfields = [{ code: "a", value: reference.name }];
+  if (reference.creatorName) {
+    const creators = Array.isArray(reference.creatorName) ? reference.creatorName : [reference.creatorName];
+    for (const creator of creators) subfields.push({ code: "c", value: creator });
+  }
+  if (reference.publisherName) subfields.push({ code: "b", value: reference.publisherName });
+  if (reference.datePublished) subfields.push({ code: "d", value: reference.datePublished });
+  return {
+    tag: "245",
+    indicator1: "0",
+    indicator2: "0",
+    subfields
+  };
+}
+function referenceFields(reference) {
+  if (isEntityReference2(reference)) return [identifierField(reference["@id"])];
+  const fields = identifierValues2(reference).map(identifierField);
+  const title = titleField(reference);
+  if (title) fields.push(title);
+  return fields;
+}
+function base552(payload) {
+  const subfields = [
+    { code: "h", value: BRO_SCHEMA_URI },
+    { code: "u", value: payload["@id"] },
+    { code: "k", value: yyyymmdd(payload.dateCreated) }
+  ];
+  if (payload.name) subfields.push({ code: "b", value: payload.name });
+  if (payload.byline) subfields.push({ code: "c", value: payload.byline });
+  if (payload.dateModified) subfields.push({ code: "m", value: yyyymmdd(payload.dateModified) });
+  return subfields;
+}
+function text520ForReaction(reaction) {
+  const indicator1 = reaction.reactionType === "Listing" ? "4" : "1";
+  const subfields = [{ code: "a", value: reaction.text }];
+  if (reaction.byline) subfields.push({ code: "c", value: reaction.byline });
+  for (const uri of reaction.citation ?? []) subfields.push({ code: "u", value: uri });
+  return {
+    tag: "520",
+    indicator1,
+    indicator2: " ",
+    subfields
+  };
+}
+function text520ForAbstract(abstractPayload) {
+  const subfields = [{ code: "a", value: abstractPayload.text }];
+  if (abstractPayload.byline) subfields.push({ code: "c", value: abstractPayload.byline });
+  for (const uri of abstractPayload.citation ?? []) subfields.push({ code: "u", value: uri });
+  return {
+    tag: "520",
+    indicator1: " ",
+    indicator2: " ",
+    subfields
+  };
+}
+function convertReactionToKomarc(reaction) {
+  return {
+    controlFields: [],
+    dataFields: [
+      ...reaction.about.flatMap(referenceFields),
+      text520ForReaction(reaction),
+      {
+        tag: "552",
+        indicator1: " ",
+        indicator2: " ",
+        subfields: [
+          ...base552(reaction),
+          { code: "t", value: reaction.reactionType }
+        ]
       }
-      return {
+    ]
+  };
+}
+function convertAbstractToKomarc(abstractPayload) {
+  return {
+    controlFields: [],
+    dataFields: [
+      ...abstractPayload.isBasedOn.flatMap(referenceFields),
+      text520ForAbstract(abstractPayload),
+      {
+        tag: "552",
+        indicator1: " ",
+        indicator2: " ",
+        subfields: base552(abstractPayload)
+      }
+    ]
+  };
+}
+function convertListToKomarc(list) {
+  if (list.itemListElement.length === 0) {
+    return [
+      {
         controlFields: [],
-        dataFields: [{
+        dataFields: [
+          {
+            tag: "552",
+            indicator1: " ",
+            indicator2: " ",
+            subfields: base552(list)
+          }
+        ]
+      }
+    ];
+  }
+  return list.itemListElement.map((element) => {
+    const referenceSubfields = isEntityReference2(element) ? [
+      { code: "u", value: element["@id"] },
+      ...element["@type"] ? [{ code: "t", value: element["@type"] }] : []
+    ] : [
+      ...element.name ? [{ code: "b", value: element.name }] : [],
+      { code: "t", value: element["@type"] },
+      ...identifierValues2(element).map((identifier) => ({ code: "u", value: identifier }))
+    ];
+    return {
+      controlFields: [],
+      dataFields: [
+        ...referenceFields(element),
+        {
           tag: "552",
           indicator1: " ",
           indicator2: " ",
-          subfields: subfields552
-        }]
-      };
-    });
-  }
-  if (isAbstract(broPayload)) {
-    return convertAbstractToKomarc(broPayload);
-  }
-  return convertArticleToKomarc(broPayload);
-}
-function isItemList(payload) {
-  return payload && payload["@type"] === "ItemList" && Array.isArray(payload.itemListElement);
-}
-function isAbstract(payload) {
-  return payload && payload["@type"] === "CreativeWork" && "isBasedOn" in payload;
-}
-function convertArticleToKomarc(article) {
-  const dataFields = [];
-  if (Array.isArray(article.about)) {
-    for (const creativeWork of article.about) {
-      if (creativeWork.identifier) {
-        const idStr = String(creativeWork.identifier);
-        if (idStr.startsWith("urn:isbn:")) {
-          dataFields.push({
-            tag: "020",
-            indicator1: " ",
-            indicator2: " ",
-            subfields: [{ code: "a", value: idStr.replace("urn:isbn:", "") }]
-          });
-        } else if (idStr.startsWith("urn:")) {
-          const prefixMatch = idStr.match(/^urn:([^:]+):/);
-          const value = prefixMatch ? idStr.substring(prefixMatch[0].length) : idStr;
-          dataFields.push({
-            tag: "024",
-            indicator1: "8",
-            // Unspecified type of standard number
-            indicator2: " ",
-            subfields: [{ code: "a", value }]
-          });
+          subfields: [
+            ...base552(list),
+            ...referenceSubfields
+          ]
         }
-      }
-    }
-  }
-  const subfields552 = [
-    { code: "h", value: "https://schema.slat.or.kr/bro/v1/schema.json" }
-  ];
-  if (article.name) {
-    subfields552.push({ code: "b", value: article.name });
-  }
-  if (article.dateCreated) {
-    const truncatedDate = article.dateCreated.substring(0, 10).replace(/-/g, "");
-    subfields552.push({ code: "k", value: truncatedDate });
-  }
-  if (article["@id"]) {
-    subfields552.push({ code: "u", value: String(article["@id"]) });
-  }
-  dataFields.push({
-    tag: "552",
-    indicator1: " ",
-    indicator2: " ",
-    subfields: subfields552
+      ]
+    };
   });
-  return {
-    controlFields: [],
-    dataFields
-  };
 }
-function convertAbstractToKomarc(abstract) {
-  const dataFields = [];
-  if (Array.isArray(abstract.isBasedOn)) {
-    for (const origin of abstract.isBasedOn) {
-      if (origin.identifier) {
-        const idStr = String(origin.identifier);
-        if (idStr.startsWith("urn:isbn:")) {
-          dataFields.push({
-            tag: "020",
-            indicator1: " ",
-            indicator2: " ",
-            subfields: [{ code: "a", value: idStr.replace("urn:isbn:", "") }]
-          });
-        } else if (idStr.startsWith("urn:")) {
-          const prefixMatch = idStr.match(/^urn:([^:]+):/);
-          const value = prefixMatch ? idStr.substring(prefixMatch[0].length) : idStr;
-          dataFields.push({
-            tag: "024",
-            indicator1: "8",
-            indicator2: " ",
-            subfields: [{ code: "a", value }]
-          });
-        }
-      }
-    }
+function convertBroToKomarc(payload) {
+  switch (payload["@type"]) {
+    case "Reaction":
+      return convertReactionToKomarc(payload);
+    case "ReactionAbstract":
+      return convertAbstractToKomarc(payload);
+    case "ReactionList":
+      return convertListToKomarc(payload);
   }
-  const subfields552 = [
-    { code: "h", value: "https://schema.slat.or.kr/bro/v1/schema.json" }
-  ];
-  if (abstract.name) {
-    subfields552.push({ code: "b", value: abstract.name });
-  }
-  if (abstract.dateCreated) {
-    const truncatedDate = abstract.dateCreated.substring(0, 10).replace(/-/g, "");
-    subfields552.push({ code: "k", value: truncatedDate });
-  }
-  if (abstract.text) {
-    subfields552.push({ code: "o", value: abstract.text });
-  }
-  dataFields.push({
-    tag: "552",
-    indicator1: " ",
-    indicator2: " ",
-    subfields: subfields552
-  });
-  return {
-    controlFields: [],
-    dataFields
-  };
 }
 export {
+  AGENT_TYPES,
+  BRO_CONTEXT_IRI,
+  BRO_ENTITY_TYPES,
+  BRO_SCHEMA_IRI,
+  BRO_VOCAB_IRI,
+  broV1Context as BroV1Context,
   bro_v1_schema_default as BroV1Schema,
-  CREATOR_TYPES,
+  broV1VocabTurtle as BroV1VocabTurtle,
+  AGENT_TYPES as CREATOR_TYPES,
+  REACTION_TYPES,
+  assertBroSchema,
   bro_v1_schema_default as broV1Schema,
+  cloneAndNormalizePayload,
   convertBroToBibframe,
   convertBroToKomarc,
+  isBroPayload,
+  isReaction,
+  isReactionAbstract,
+  isReactionList,
   normalizePayload,
   normalizeUrnScheme,
   renderBroToMarkdown,

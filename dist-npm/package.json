@@ -1,6 +1,6 @@
 {
   "name": "@slat.or.kr/bro-schema",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "BRO:Bibliographic Reaction Object",
   "repository": {
     "type": "git",
@@ -15,10 +15,10 @@
     "booksle",
     "metadata",
     "slat",
-    "bibframe",
     "json-ld",
     "bibliographic",
-    "schema.org"
+    "schema.org",
+    "json-schema"
   ],
   "main": "./npm-index.cjs",
   "module": "./npm-index.js",
@@ -29,7 +29,11 @@
       "import": "./npm-index.js",
       "require": "./npm-index.cjs"
     },
-    "./schema": "./bro-v1-schema.json"
+    "./schema": "./bro-v1-schema.json",
+    "./context": "./bro-v1-context.jsonld",
+    "./vocab": "./bro-v1-vocab.ttl",
+    "./examples": "./bro-v1-examples.json",
+    "./quickstart": "./QUICKSTART.md"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1"

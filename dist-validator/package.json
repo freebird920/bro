@@ -1,6 +1,6 @@
 {
   "name": "@slat.or.kr/bro-validator",
-  "version": "1.0.5",
+  "version": "1.0.3",
   "main": "./index.cjs",
   "module": "./index.js",
   "types": "./index.d.ts",
@@ -9,7 +9,10 @@
       "require": "./index.cjs",
       "import": "./index.js",
       "types": "./index.d.ts"
-    }
+    },
+    "./schema": "./bro-v1-schema.json",
+    "./context": "./bro-v1-context.jsonld",
+    "./examples": "./bro-v1-examples.json"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1"

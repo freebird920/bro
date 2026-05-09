@@ -1,332 +1,1091 @@
-import * as _cfworker_json_schema from '@cfworker/json-schema';
-import * as v from 'valibot';
-
 var $schema = "https://json-schema.org/draft/2020-12/schema";
-var $id = "https://schema.slat.or.kr/bro/v1/schema.json";
-var title = "Bibliographic Reaction Object(BRO)";
-var description = "Bibliographic Reaction Object";
+var $id = "https://schema.slat.or.kr/bro/v1.0/schema.json";
+var title = "Bibliographic Reaction Object (BRO) v1.0";
+var description = "JSON Schema for exchanging bibliographic reaction data: recommendation lists, review lists, reading lists, curation notes, reviews, comments, and summaries. The schema keeps the ordinary input model simple while remaining compatible with JSON-LD and bibliographic metadata ecosystems.";
 var type = "object";
 var oneOf = [
 	{
-		description: "클라이언트 데이터 인입용 쓰기 페이로드 (Ingestion DTO - UUID 검증 면제)",
-		$ref: "#/$defs/articleIngestionPayload"
+		$ref: "#/$defs/Reaction"
 	},
 	{
-		description: "서버 내부 및 조회용 영속성 엔티티 (Persisted Entity - UUID 필수 강제, 반출 시 짭 UUID로 치환할 것)",
-		$ref: "#/$defs/articlePersistedEntity"
+		$ref: "#/$defs/ReactionAbstract"
 	},
 	{
-		description: "도서 관련 글 목록 (ItemList - 다중 배열 매트릭스)",
-		$ref: "#/$defs/itemListDefinition"
+		$ref: "#/$defs/ReactionList"
 	}
 ];
 var $defs = {
-	itemListDefinition: {
+	contextRef: {
+		description: "MUST be the BRO v1.0 context IRI. Extension contexts MAY be appended after the BRO context.",
+		oneOf: [
+			{
+				"const": "https://schema.slat.or.kr/bro/v1.0/context.jsonld"
+			},
+			{
+				type: "array",
+				minItems: 1,
+				prefixItems: [
+					{
+						"const": "https://schema.slat.or.kr/bro/v1.0/context.jsonld"
+					}
+				],
+				items: {
+					oneOf: [
+						{
+							type: "string",
+							format: "uri"
+						},
+						{
+							type: "object"
+						}
+					]
+				}
+			}
+		]
+	},
+	uuidUrn: {
+		type: "string",
+		description: "Lowercase RFC 9562 UUID URN. Versions 1, 4, 5, 6, 7, and 8 are accepted syntactically.",
+		pattern: "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+	},
+	httpsIri: {
+		type: "string",
+		description: "HTTPS IRI. Used for BRO entity identifiers and web identifiers where secure canonical IDs are available.",
+		pattern: "^https://(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}(?::[0-9]{1,5})?(?:/[^\\s<>\"\\\\^`{|}]*)?$",
+		maxLength: 2048
+	},
+	httpIri: {
+		type: "string",
+		description: "HTTP IRI. Allowed for external bibliographic/LOD identifiers such as legacy linked-data resource URIs, but not for BRO entity @id.",
+		pattern: "^http://(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}(?::[0-9]{1,5})?(?:/[^\\s<>\"\\\\^`{|}]*)?$",
+		maxLength: 2048
+	},
+	webIri: {
+		anyOf: [
+			{
+				$ref: "#/$defs/httpsIri"
+			},
+			{
+				$ref: "#/$defs/httpIri"
+			}
+		]
+	},
+	mailtoUri: {
+		type: "string",
+		pattern: "^mailto:[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+		maxLength: 320
+	},
+	entityIri: {
+		description: "Identifier for a BRO entity instance. Use a UUID URN or an HTTPS IRI; do not use HTTP for BRO entity @id.",
+		anyOf: [
+			{
+				$ref: "#/$defs/uuidUrn"
+			},
+			{
+				$ref: "#/$defs/httpsIri"
+			}
+		]
+	},
+	agentIri: {
+		description: "Identifier for an agent. UUID URN, HTTPS IRI, or mailto URI.",
+		anyOf: [
+			{
+				$ref: "#/$defs/uuidUrn"
+			},
+			{
+				$ref: "#/$defs/httpsIri"
+			},
+			{
+				$ref: "#/$defs/mailtoUri"
+			}
+		]
+	},
+	rfc3339DateTime: {
+		type: "string",
+		format: "date-time",
+		description: "RFC 3339 date-time with Z or numeric offset. Naive datetimes are rejected.",
+		pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:(?:[0-5][0-9]|60)(?:\\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+	},
+	rfc3339Date: {
+		type: "string",
+		pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$"
+	},
+	bibliographicDate: {
+		description: "Bibliographic publication date. External works often have year-only or month-only precision.",
+		oneOf: [
+			{
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			{
+				$ref: "#/$defs/rfc3339Date"
+			},
+			{
+				type: "string",
+				pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$"
+			},
+			{
+				type: "string",
+				pattern: "^[0-9]{4}$"
+			}
+		]
+	},
+	languageTag: {
+		type: "string",
+		description: "BCP 47 language tag, syntactic validation only.",
+		pattern: "^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{1,8})*$",
+		maxLength: 35
+	},
+	languageTagArray: {
+		type: "array",
+		minItems: 1,
+		maxItems: 20,
+		uniqueItems: true,
+		items: {
+			$ref: "#/$defs/languageTag"
+		}
+	},
+	plainText: {
+		type: "string",
+		minLength: 1,
+		maxLength: 2000
+	},
+	longText: {
+		type: "string",
+		minLength: 1,
+		maxLength: 10000
+	},
+	bylineString: {
+		type: "string",
+		description: "Original attribution display string as it appeared in the source.",
+		minLength: 1,
+		maxLength: 2000
+	},
+	bodyText: {
+		type: "string",
+		description: "Body text. It MUST NOT begin with a YAML/TOML front-matter block.",
+		minLength: 0,
+		maxLength: 300000,
+		not: {
+			pattern: "^(?:---|\\+\\+\\+)\\s*(?:\\r?\\n|$)"
+		}
+	},
+	textFormat: {
+		type: "string",
+		description: "MIME type hint. Absent means text/plain.",
+		pattern: "^[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]{0,126}/[a-zA-Z0-9][a-zA-Z0-9!#$&^_.+-]{0,126}(?:\\s*;\\s*[a-zA-Z0-9!#$&^_.+-]+=(?:[a-zA-Z0-9!#$&^_.+-]+|\"[^\"]*\"))*$",
+		maxLength: 255
+	},
+	keywordsArray: {
+		type: "array",
+		minItems: 0,
+		maxItems: 100,
+		uniqueItems: true,
+		items: {
+			type: "string",
+			minLength: 1,
+			maxLength: 200
+		}
+	},
+	uriArray: {
+		type: "array",
+		maxItems: 200,
+		uniqueItems: true,
+		items: {
+			type: "string",
+			format: "uri"
+		}
+	},
+	identifierString: {
+		type: "string",
+		description: "Any identifier or identity link for the referenced resource: ISBN URN, DOI URL, NLK/LOD URI, vendor record ID, UUID URN, HTTPS/HTTP URI, or institutional control number. Use name for titles, not identifier.",
+		minLength: 1,
+		maxLength: 2048,
+		not: {
+			pattern: "^\\s*$"
+		}
+	},
+	identifierPropertyValue: {
 		type: "object",
+		description: "Structured identifier using schema:PropertyValue. Recommended when the identifier type or authority must be preserved.",
 		required: [
-			"@context",
 			"@type",
-			"author",
-			"itemListElement"
+			"value"
 		],
 		properties: {
-			"@context": {
-				"const": "https://schema.org"
-			},
 			"@type": {
-				"const": "ItemList"
-			},
-			"@id": {
-				type: "string",
-				pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+				"const": "PropertyValue"
 			},
 			name: {
 				type: "string",
-				minLength: 2,
+				minLength: 1,
 				maxLength: 200
 			},
-			author: {
+			propertyID: {
+				type: "string",
+				minLength: 1,
+				maxLength: 500
+			},
+			value: {
+				oneOf: [
+					{
+						type: "string",
+						minLength: 1,
+						maxLength: 2048
+					},
+					{
+						type: "number"
+					}
+				]
+			},
+			valueReference: {
+				type: "string",
+				format: "uri"
+			}
+		},
+		anyOf: [
+			{
+				required: [
+					"name"
+				]
+			},
+			{
+				required: [
+					"propertyID"
+				]
+			}
+		],
+		additionalProperties: false
+	},
+	identifierValue: {
+		oneOf: [
+			{
+				$ref: "#/$defs/identifierString"
+			},
+			{
+				$ref: "#/$defs/identifierPropertyValue"
+			}
+		]
+	},
+	identifierSet: {
+		description: "A single identifier or a set of identifiers for the same referenced entity. BRO does not use a separate sameAs field.",
+		oneOf: [
+			{
+				$ref: "#/$defs/identifierValue"
+			},
+			{
 				type: "array",
 				minItems: 1,
+				maxItems: 50,
 				uniqueItems: true,
-				description: "도서 목록 작성/생성 주체 배열. 다수 주체(공동 저자, 다중 시스템) 바인딩 지원.",
 				items: {
-					$ref: "#/$defs/authorDefinitions"
-				}
-			},
-			itemListElement: {
-				type: "array",
-				minItems: 0,
-				description: "도서 목록의 각 항목. 모든 항목은 Article로 규격화되며, 순수한 도서 추가의 경우 text가 빈 문자열인 Article로 취급됩니다.",
-				items: {
-					$ref: "#/$defs/articleIngestionPayload"
+					$ref: "#/$defs/identifierValue"
 				}
 			}
-		}
+		]
 	},
-	isbnDefinition: {
-		type: "string",
-		pattern: "^(?:97[89]-?)?(?:\\d[ -]?){9}[\\dxX]$"
+	agent: {
+		description: "Creator, curator, issuer, or responsible producer of a BRO object.",
+		oneOf: [
+			{
+				$ref: "#/$defs/agentPerson"
+			},
+			{
+				$ref: "#/$defs/agentOrganization"
+			},
+			{
+				$ref: "#/$defs/agentSoftware"
+			},
+			{
+				$ref: "#/$defs/agentUnknown"
+			},
+			{
+				$ref: "#/$defs/agentRole"
+			}
+		]
 	},
-	abstractDefinition: {
+	agentPerson: {
 		type: "object",
 		required: [
 			"@type",
-			"@id",
-			"text",
-			"author",
-			"dateCreated"
+			"name"
 		],
-		unevaluatedProperties: false,
 		properties: {
 			"@type": {
-				"const": "CreativeWork"
+				"const": "Person"
 			},
 			"@id": {
-				type: "string",
-				pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-				description: "원본 데이터의 UUID와 생성 시간을 기반으로 한 결정론적 UUID. 본 객체는 불변(Immutable)하며 갱신 시 새로운 UUID가 발급되어야 함."
+				$ref: "#/$defs/agentIri"
 			},
-			dateCreated: {
+			name: {
 				type: "string",
-				format: "date-time",
-				description: "요약 객체의 최초 생성 타임스탬프 (ISO 8601 / RFC 3339 준수). 불변성 원칙에 따라 데이터 수정 시 updated 필드를 사용하지 않고 신규 객체와 새로운 dateCreated를 발급하여 멱등성을 보장함. (Mapping: KOMARC 매핑시 YYYYMMDD 포맷으로 문자열 절삭 처리되어 KOMARC 552 ▾k 속성 값의 개시일자/종료일자에 바인딩됨)"
-			},
-			text: {
-				type: "string",
-				description: "LLM 또는 사람이 작성한 리뷰, 분석, 비평 등 파생 데이터에 대한 정형화된 상세 요약 본문. (Mapping: KOMARC 552 ▾o 개체/속성 개요 서브필드에 직접 주입됨)"
-			},
-			author: {
-				type: "array",
-				minItems: 1,
-				uniqueItems: true,
-				description: "요약 데이터 생성 주체 배열. 기계(LLM)와 인간 작업자의 공동 작업 등 복수 주체 명시.",
-				items: {
-					$ref: "#/$defs/authorDefinitions"
-				}
+				minLength: 1,
+				maxLength: 1000
 			}
-		}
+		},
+		additionalProperties: false
 	},
-	articleBaseProperties: {
+	agentOrganization: {
 		type: "object",
+		required: [
+			"@type",
+			"name"
+		],
 		properties: {
-			"@context": {
-				"const": "https://schema.org"
-			},
 			"@type": {
-				"const": "Article"
+				"const": "Organization"
 			},
-			dateCreated: {
-				type: "string",
-				format: "date-time",
-				description: "파생 문서 엔티티의 최초 생성 타임스탬프 (ISO 8601 / RFC 3339 준수). 데이터 무결성을 위해 갱신을 허용하지 않음(No Update). 수정 요구 발생 시 기존 객체를 논리적 삭제 또는 아카이빙하고 신규 타임스탬프를 획득한 새 객체로 대체함. (Mapping: KOMARC 연동 시 YYYYMMDD로 다운캐스팅되어 552 ▾k 서브필드에 개시일자로 맵핑됨)"
-			},
-			about: {
-				type: "array",
-				minItems: 1,
-				uniqueItems: true,
-				description: "파생 문서가 타겟팅하는 코어 서지 엔티티 배열. 단권, 다권본 세트, 동일 저작물의 이기종 판본(개정판, e-book 등 여러 ISBN)을 무제한으로 바인딩할 수 있음. 단일 도서 타겟팅 시에도 반드시 원소 1개짜리 배열로 인입되어야 함.",
-				items: {
-					type: "object",
-					required: [
-						"@type",
-						"isbn"
-					],
-					unevaluatedProperties: false,
-					properties: {
-						"@type": {
-							"const": "Book"
-						},
-						isbn: {
-							$ref: "#/$defs/isbnDefinition",
-							description: "국제표준도서번호 식별자."
-						}
-					}
-				}
-			},
-			text: {
-				type: "string",
-				minLength: 0,
-				maxLength: 300000,
-				description: "범용 문서 텍스트. 최상단 YAML Frontmatter 캡슐화 필수. 데이터 인입 시 프론트매터 내부의 임의의 키(Arbitrary Keys) 확장은 전면 허용됨. 단, API 반환 및 영속화 객체 표출 시 파이프라인은 반드시 데이터를 정규화하여 1급 필드인 `title`(string), `byline`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[])만을 최상위 노드에 직렬화하고, 기타 모든 잔여 동적 데이터는 `others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음 처리하여 마크다운을 재조립해야 함. (Mapping Protocol: 본 데이터 세트의 규격 출처는 KOMARC 552 ▾h 부호세트 이름/출처에 `https://schema.slat.or.kr/bro/v1/schema.json` 식별자로 명시되어야 하며, text 페이로드 원문은 552 ▾u의 URI 식별자를 통해 외부 해소되어야 함) @format markdown @ai-hint Frontmatter 파싱은 정규식 ^---\\n([\\s\\S]*?)\\n--- 를 사용하되, 역직렬화 반환 시 `title`, `byline`, `keywords`, `image`, `source_url` 및 잔여 K-V 튜플을 포함하는 `others` 노드만을 포함하도록 재구성할 것."
-			},
-			abstract: {
-				$ref: "#/$defs/abstractDefinition",
-				description: "문서의 구조화된 요약 데이터 (기계 또는 사람이 작성)"
-			},
-			author: {
-				type: "array",
-				minItems: 1,
-				uniqueItems: true,
-				description: "본문 데이터 생성 주체 배열. 복수 인원 공동 집필 및 복합 모델 관여 이력 추적용.",
-				items: {
-					$ref: "#/$defs/authorDefinitions"
-				}
-			}
-		}
-	},
-	articleIngestionPayload: {
-		description: "클라이언트 POST 페이로드 구조 (서버 사이드 변수 통제)",
-		type: "object",
-		required: [
-			"@context",
-			"@type",
-			"about",
-			"text",
-			"author",
-			"dateCreated"
-		],
-		unevaluatedProperties: false,
-		allOf: [
-			{
-				$ref: "#/$defs/articleBaseProperties"
-			}
-		]
-	},
-	articlePersistedEntity: {
-		description: "데이터베이스 영속성 및 데이터 반출용 엄격한 스키마 구조",
-		type: "object",
-		unevaluatedProperties: false,
-		required: [
-			"@context",
-			"@type",
-			"@id",
-			"about",
-			"text",
-			"author",
-			"dateCreated"
-		],
-		allOf: [
-			{
-				$ref: "#/$defs/articleBaseProperties"
-			},
-			{
-				properties: {
-					"@id": {
-						type: "string",
-						pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+			"@id": {
+				anyOf: [
+					{
+						$ref: "#/$defs/uuidUrn"
 					},
-					datePublished: {
-						type: "string",
-						format: "date",
-						description: "엔티티의 발행/영속화 일자. (Mapping: KOMARC 552 ▾k 서브필드에 종료일자 또는 유효일자로 맵핑됨)"
+					{
+						$ref: "#/$defs/webIri"
 					}
-				}
+				]
+			},
+			name: {
+				type: "string",
+				minLength: 1,
+				maxLength: 1000
 			}
-		]
+		},
+		additionalProperties: false
 	},
-	authorDefinitions: {
+	agentSoftware: {
 		type: "object",
 		required: [
 			"@type",
 			"@id",
 			"name"
 		],
-		unevaluatedProperties: false,
 		properties: {
 			"@type": {
-				"enum": [
-					"Person",
-					"GovernmentOrganization",
-					"Corporation",
-					"Organization",
-					"SoftwareApplication"
-				]
+				"const": "SoftwareApplication"
+			},
+			"@id": {
+				$ref: "#/$defs/httpsIri"
 			},
 			name: {
 				type: "string",
-				maxLength: 100,
-				description: "파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임."
+				minLength: 1,
+				maxLength: 1000
 			},
 			softwareVersion: {
 				type: "string",
-				description: "LLM 등 모델의 세부 버전"
-			},
-			"@id": {
-				type: "string",
-				description: "서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것."
+				minLength: 1,
+				maxLength: 50
 			}
 		},
+		additionalProperties: false
+	},
+	agentUnknown: {
+		type: "object",
+		required: [
+			"@type"
+		],
+		properties: {
+			"@type": {
+				"const": "UnknownAgent"
+			},
+			name: {
+				type: "string",
+				minLength: 1,
+				maxLength: 1000
+			}
+		},
+		additionalProperties: false
+	},
+	agentRole: {
+		type: "object",
+		required: [
+			"@type",
+			"agent"
+		],
+		properties: {
+			"@type": {
+				"const": "Role"
+			},
+			roleName: {
+				type: "string",
+				minLength: 1,
+				maxLength: 1000
+			},
+			startDate: {
+				$ref: "#/$defs/rfc3339Date"
+			},
+			endDate: {
+				$ref: "#/$defs/rfc3339Date"
+			},
+			agent: {
+				oneOf: [
+					{
+						$ref: "#/$defs/agentPerson"
+					},
+					{
+						$ref: "#/$defs/agentOrganization"
+					},
+					{
+						$ref: "#/$defs/agentSoftware"
+					},
+					{
+						$ref: "#/$defs/agentUnknown"
+					}
+				]
+			}
+		},
+		additionalProperties: false
+	},
+	agentArray: {
+		type: "array",
+		minItems: 1,
+		maxItems: 100,
+		uniqueItems: true,
+		items: {
+			$ref: "#/$defs/agent"
+		}
+	},
+	boundedJsonValue: {
+		oneOf: [
+			{
+				type: "string",
+				maxLength: 10000
+			},
+			{
+				type: "number"
+			},
+			{
+				type: "boolean"
+			},
+			{
+				type: "null"
+			},
+			{
+				type: "array",
+				maxItems: 100
+			},
+			{
+				type: "object",
+				maxProperties: 50
+			}
+		]
+	},
+	additionalPropertyValue: {
+		type: "object",
+		required: [
+			"@type",
+			"name",
+			"value"
+		],
+		properties: {
+			"@type": {
+				"const": "PropertyValue"
+			},
+			name: {
+				type: "string",
+				minLength: 1,
+				maxLength: 200
+			},
+			value: {
+				$ref: "#/$defs/boundedJsonValue"
+			},
+			propertyID: {
+				type: "string",
+				minLength: 1,
+				maxLength: 500
+			},
+			valueReference: {
+				type: "string",
+				format: "uri"
+			},
+			unitCode: {
+				type: "string",
+				maxLength: 50
+			},
+			unitText: {
+				type: "string",
+				maxLength: 50
+			}
+		},
+		additionalProperties: false
+	},
+	additionalPropertyArray: {
+		type: "array",
+		maxItems: 200,
+		items: {
+			$ref: "#/$defs/additionalPropertyValue"
+		}
+	},
+	extensionValue: {
+		description: "Value for a colon-prefixed extension property. Kept shallow to prevent payload bombs.",
+		oneOf: [
+			{
+				type: "string",
+				maxLength: 10000
+			},
+			{
+				type: "number"
+			},
+			{
+				type: "boolean"
+			},
+			{
+				type: "null"
+			},
+			{
+				type: "object",
+				maxProperties: 20
+			},
+			{
+				type: "array",
+				maxItems: 100
+			}
+		]
+	},
+	workType: {
+		type: "string",
+		pattern: "^[A-Z][A-Za-z0-9]{1,79}$",
+		description: "Schema.org CreativeWork type token. Recommended values: CreativeWork, Book, Article, ScholarlyArticle, WebPage, Chapter, Periodical, Collection, Dataset, Report. Use CreativeWork when unsure."
+	},
+	workReference: {
+		type: "object",
+		description: "A direct reference to an external bibliographic or cultural work. It is intentionally not limited to books.",
+		required: [
+			"@type"
+		],
+		properties: {
+			"@type": {
+				$ref: "#/$defs/workType"
+			},
+			identifier: {
+				$ref: "#/$defs/identifierSet"
+			},
+			name: {
+				$ref: "#/$defs/plainText"
+			},
+			creatorName: {
+				oneOf: [
+					{
+						type: "string",
+						minLength: 1,
+						maxLength: 2000
+					},
+					{
+						type: "array",
+						minItems: 1,
+						maxItems: 50,
+						uniqueItems: true,
+						items: {
+							type: "string",
+							minLength: 1,
+							maxLength: 1000
+						}
+					}
+				]
+			},
+			publisherName: {
+				type: "string",
+				minLength: 1,
+				maxLength: 1000
+			},
+			datePublished: {
+				$ref: "#/$defs/bibliographicDate"
+			},
+			bookEdition: {
+				type: "string",
+				minLength: 1,
+				maxLength: 500
+			},
+			inLanguage: {
+				$ref: "#/$defs/languageTagArray"
+			},
+			keywords: {
+				$ref: "#/$defs/keywordsArray"
+			},
+			image: {
+				$ref: "#/$defs/uriArray"
+			},
+			additionalProperty: {
+				$ref: "#/$defs/additionalPropertyArray"
+			},
+			bibliographicLevel: {
+				$ref: "#/$defs/bibliographicLevel"
+			},
+			url: {
+				$ref: "#/$defs/webIriSet"
+			},
+			exampleOfWork: {
+				$ref: "#/$defs/workIdentityReference"
+			}
+		},
+		anyOf: [
+			{
+				required: [
+					"identifier"
+				]
+			},
+			{
+				required: [
+					"name"
+				]
+			}
+		],
+		additionalProperties: false
+	},
+	broReference: {
+		type: "object",
+		description: "Reference to another BRO entity. Use this when list items have their own Reaction or ReactionAbstract object.",
+		required: [
+			"@id"
+		],
+		properties: {
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			"@type": {
+				type: "string",
+				"enum": [
+					"Reaction",
+					"ReactionAbstract"
+				]
+			}
+		},
+		additionalProperties: false
+	},
+	targetReference: {
+		oneOf: [
+			{
+				$ref: "#/$defs/workReference"
+			},
+			{
+				$ref: "#/$defs/broReference"
+			}
+		]
+	},
+	listElement: {
+		oneOf: [
+			{
+				$ref: "#/$defs/workReference"
+			},
+			{
+				$ref: "#/$defs/listEntityReference"
+			}
+		]
+	},
+	reactionType: {
+		type: "string",
+		"enum": [
+			"Response",
+			"Listing",
+			"Unspecified"
+		],
+		"default": "Unspecified",
+		description: "Response = review/comment/critique with non-empty text. Listing = inclusion/recommendation/list-entry action. Unspecified = publisher intentionally declines classification."
+	},
+	Reaction: {
+		type: "object",
+		title: "Reaction",
+		description: "A review, comment, critique, recommendation reason, or list-inclusion reaction about one or more works.",
+		required: [
+			"@context",
+			"@type",
+			"@id",
+			"reactionType",
+			"about",
+			"text",
+			"creator",
+			"dateCreated"
+		],
+		properties: {
+			"@context": {
+				$ref: "#/$defs/contextRef"
+			},
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			name: {
+				$ref: "#/$defs/plainText"
+			},
+			byline: {
+				$ref: "#/$defs/bylineString"
+			},
+			creator: {
+				$ref: "#/$defs/agentArray"
+			},
+			dateCreated: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			dateModified: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			datePublished: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			license: {
+				$ref: "#/$defs/httpsIri"
+			},
+			inLanguage: {
+				$ref: "#/$defs/languageTagArray"
+			},
+			keywords: {
+				$ref: "#/$defs/keywordsArray"
+			},
+			image: {
+				$ref: "#/$defs/uriArray"
+			},
+			citation: {
+				$ref: "#/$defs/uriArray"
+			},
+			additionalProperty: {
+				$ref: "#/$defs/additionalPropertyArray"
+			},
+			"@type": {
+				"const": "Reaction"
+			},
+			reactionType: {
+				$ref: "#/$defs/reactionType"
+			},
+			about: {
+				type: "array",
+				minItems: 1,
+				maxItems: 5,
+				uniqueItems: true,
+				items: {
+					$ref: "#/$defs/targetReference"
+				}
+			},
+			text: {
+				$ref: "#/$defs/bodyText"
+			},
+			textFormat: {
+				$ref: "#/$defs/textFormat"
+			}
+		},
+		patternProperties: {
+			"^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+				$ref: "#/$defs/extensionValue"
+			}
+		},
+		additionalProperties: false,
 		allOf: [
 			{
 				"if": {
 					properties: {
-						"@type": {
-							"const": "Person"
+						reactionType: {
+							"const": "Response"
 						}
-					}
+					},
+					required: [
+						"reactionType"
+					]
 				},
 				then: {
 					properties: {
-						"@id": {
-							pattern: "^urn:uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+						text: {
+							minLength: 1
 						}
 					}
 				}
+			}
+		]
+	},
+	ReactionAbstract: {
+		type: "object",
+		title: "ReactionAbstract",
+		description: "A structured summary derived from a Reaction, ReactionList, or external work.",
+		required: [
+			"@context",
+			"@type",
+			"@id",
+			"text",
+			"creator",
+			"dateCreated",
+			"isBasedOn"
+		],
+		properties: {
+			"@context": {
+				$ref: "#/$defs/contextRef"
 			},
-			{
-				"if": {
-					properties: {
-						"@type": {
-							"const": "GovernmentOrganization"
-						}
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			name: {
+				$ref: "#/$defs/plainText"
+			},
+			byline: {
+				$ref: "#/$defs/bylineString"
+			},
+			creator: {
+				$ref: "#/$defs/agentArray"
+			},
+			dateCreated: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			dateModified: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			datePublished: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			license: {
+				$ref: "#/$defs/httpsIri"
+			},
+			inLanguage: {
+				$ref: "#/$defs/languageTagArray"
+			},
+			keywords: {
+				$ref: "#/$defs/keywordsArray"
+			},
+			image: {
+				$ref: "#/$defs/uriArray"
+			},
+			citation: {
+				$ref: "#/$defs/uriArray"
+			},
+			additionalProperty: {
+				$ref: "#/$defs/additionalPropertyArray"
+			},
+			"@type": {
+				"const": "ReactionAbstract"
+			},
+			text: {
+				allOf: [
+					{
+						$ref: "#/$defs/bodyText"
+					},
+					{
+						minLength: 1
 					}
-				},
-				then: {
-					properties: {
-						"@id": {
-							pattern: "^urn:kr:govcode:\\d{7}$"
-						}
-					}
+				]
+			},
+			textFormat: {
+				$ref: "#/$defs/textFormat"
+			},
+			isBasedOn: {
+				type: "array",
+				minItems: 1,
+				maxItems: 10,
+				uniqueItems: true,
+				items: {
+					$ref: "#/$defs/basedOnReference"
 				}
+			}
+		},
+		patternProperties: {
+			"^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+				$ref: "#/$defs/extensionValue"
+			}
+		},
+		additionalProperties: false
+	},
+	ReactionList: {
+		type: "object",
+		title: "ReactionList",
+		description: "A persistent recommendation, review, reading, or curation list. The list itself is meaningful metadata.",
+		required: [
+			"@context",
+			"@type",
+			"@id",
+			"creator",
+			"itemListElement",
+			"dateCreated"
+		],
+		properties: {
+			"@context": {
+				$ref: "#/$defs/contextRef"
 			},
-			{
-				"if": {
-					properties: {
-						"@type": {
-							"const": "Corporation"
-						}
-					}
-				},
-				then: {
-					properties: {
-						"@id": {
-							pattern: "^urn:kr:(crn:\\d{13}|brn:\\d{10})$"
-						}
-					}
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			name: {
+				$ref: "#/$defs/plainText"
+			},
+			byline: {
+				$ref: "#/$defs/bylineString"
+			},
+			creator: {
+				$ref: "#/$defs/agentArray"
+			},
+			dateCreated: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			dateModified: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			datePublished: {
+				$ref: "#/$defs/rfc3339DateTime"
+			},
+			license: {
+				$ref: "#/$defs/httpsIri"
+			},
+			inLanguage: {
+				$ref: "#/$defs/languageTagArray"
+			},
+			keywords: {
+				$ref: "#/$defs/keywordsArray"
+			},
+			image: {
+				$ref: "#/$defs/uriArray"
+			},
+			citation: {
+				$ref: "#/$defs/uriArray"
+			},
+			additionalProperty: {
+				$ref: "#/$defs/additionalPropertyArray"
+			},
+			"@type": {
+				"const": "ReactionList"
+			},
+			itemListElement: {
+				type: "array",
+				minItems: 0,
+				maxItems: 10000,
+				items: {
+					$ref: "#/$defs/listElement"
 				}
+			}
+		},
+		patternProperties: {
+			"^[a-z][a-z0-9-]*:[A-Za-z][A-Za-z0-9_-]*$": {
+				$ref: "#/$defs/extensionValue"
+			}
+		},
+		additionalProperties: false
+	},
+	bibliographicLevel: {
+		type: "string",
+		"enum": [
+			"Work",
+			"Edition",
+			"Item",
+			"Unspecified"
+		],
+		description: "Approximate bibliographic level of this reference. Work: abstract work level; Edition: manifestation/edition/publication level; Item: holding/copy/item level; Unspecified: source does not allow a decision."
+	},
+	listEntityReference: {
+		type: "object",
+		description: "Reference to a BRO Reaction or ReactionAbstract used as a list element. ReactionList nesting is intentionally not used for list elements in v1.0.",
+		required: [
+			"@id"
+		],
+		properties: {
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			"@type": {
+				type: "string",
+				"enum": [
+					"Reaction",
+					"ReactionAbstract"
+				]
+			}
+		},
+		additionalProperties: false
+	},
+	basedOnEntityReference: {
+		type: "object",
+		description: "Reference to another BRO entity used as a source for a ReactionAbstract.",
+		required: [
+			"@id"
+		],
+		properties: {
+			"@id": {
+				$ref: "#/$defs/entityIri"
+			},
+			"@type": {
+				type: "string",
+				"enum": [
+					"Reaction",
+					"ReactionAbstract",
+					"ReactionList"
+				]
+			}
+		},
+		additionalProperties: false
+	},
+	basedOnReference: {
+		oneOf: [
+			{
+				$ref: "#/$defs/workReference"
 			},
 			{
-				"if": {
-					properties: {
-						"@type": {
-							"const": "Organization"
+				$ref: "#/$defs/basedOnEntityReference"
+			}
+		]
+	},
+	workIdentityReference: {
+		type: "object",
+		description: "Optional abstract-work-level reference for an edition, translation, manifestation, or item. Advanced use; general users may omit it.",
+		required: [
+			"@type"
+		],
+		properties: {
+			"@type": {
+				"const": "CreativeWork"
+			},
+			identifier: {
+				$ref: "#/$defs/identifierSet"
+			},
+			name: {
+				$ref: "#/$defs/plainText"
+			},
+			creatorName: {
+				oneOf: [
+					{
+						type: "string",
+						minLength: 1,
+						maxLength: 2000
+					},
+					{
+						type: "array",
+						minItems: 1,
+						maxItems: 50,
+						uniqueItems: true,
+						items: {
+							type: "string",
+							minLength: 1,
+							maxLength: 1000
 						}
 					}
-				},
-				then: {
-					properties: {
-						"@id": {
-							pattern: "^urn:(kr:npo:\\d{10}|uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-						}
-					}
-				}
+				]
+			}
+		},
+		anyOf: [
+			{
+				required: [
+					"identifier"
+				]
 			},
 			{
-				"if": {
-					properties: {
-						"@type": {
-							"const": "SoftwareApplication"
-						}
-					}
-				},
-				then: {
-					properties: {
-						"@id": {
-							pattern: "^urn:model:[a-zA-Z0-9-]+:[a-zA-Z0-9\\.-]+$",
-							description: "모델을 식별하는 단일 URN (예: urn:model:openai:gpt-4o, urn:model:google:gemini-1.5-pro)"
-						}
-					}
+				required: [
+					"name"
+				]
+			}
+		],
+		additionalProperties: false
+	},
+	webIriArray: {
+		type: "array",
+		minItems: 1,
+		maxItems: 200,
+		uniqueItems: true,
+		items: {
+			$ref: "#/$defs/webIri"
+		}
+	},
+	webIriSet: {
+		description: "One or more HTTP/HTTPS URLs.",
+		oneOf: [
+			{
+				$ref: "#/$defs/webIri"
+			},
+			{
+				type: "array",
+				minItems: 1,
+				maxItems: 200,
+				uniqueItems: true,
+				items: {
+					$ref: "#/$defs/webIri"
 				}
 			}
 		]
@@ -342,253 +1101,197 @@ var broV1Schema = {
 	$defs: $defs
 };
 
-/**
- * This file was automatically generated by json-schema-to-typescript.
- * DO NOT MODIFY IT BY HAND. Instead, modify the source JSONSchema file,
- * and run the build script to regenerate this file.
- */
-/**
- * Bibliographic Reaction Object
- */
-type BibliographicReactionObjectBRO = ArticleIngestionPayload | ArticlePersistedEntity | ItemListDefinition;
-/**
- * 클라이언트 데이터 인입용 쓰기 페이로드 (Ingestion DTO - UUID 검증 면제)
- */
-type ArticleIngestionPayload = ArticleBaseProperties;
-type AuthorDefinitions = {
-    [k: string]: unknown;
-} & {
-    [k: string]: unknown;
-} & {
-    [k: string]: unknown;
-} & {
-    [k: string]: unknown;
-} & {
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-} & {
-    "@type": "Person" | "GovernmentOrganization" | "Corporation" | "Organization" | "SoftwareApplication";
-    /**
-     * 파생 문서(요약, 서평 등)를 생성한 주체의 이름 또는 기관/시스템명. 주의: 원본 도서의 저자(서지 표준의 1XX/7XX 계층)와 엄격히 분리된 도메인임.
-     */
-    name: string;
-    /**
-     * LLM 등 모델의 세부 버전
-     */
-    softwareVersion?: string;
-    /**
-     * 서버 내부에서는 원본 UUID v7을 유지하되, 클라이언트 반출 시 반드시 가명 처리된 값을 바인딩할 것.
-     */
-    "@id": string;
-    [k: string]: unknown;
-};
-/**
- * 서버 내부 및 조회용 영속성 엔티티 (Persisted Entity - UUID 필수 강제, 반출 시 짭 UUID로 치환할 것)
- */
-type ArticlePersistedEntity = ArticleBaseProperties & {
-    "@id"?: string;
-    /**
-     * 엔티티의 발행/영속화 일자. (Mapping: KOMARC 552 ▾k 서브필드에 종료일자 또는 유효일자로 맵핑됨)
-     */
-    datePublished?: string;
-    [k: string]: unknown;
-};
-/**
- * 클라이언트 POST 페이로드 구조 (서버 사이드 변수 통제)
- */
-type ArticleIngestionPayload1 = ArticleBaseProperties;
-interface ArticleBaseProperties {
-    "@context"?: "https://schema.org";
-    "@type"?: "Article";
-    /**
-     * 파생 문서 엔티티의 최초 생성 타임스탬프 (ISO 8601 / RFC 3339 준수). 데이터 무결성을 위해 갱신을 허용하지 않음(No Update). 수정 요구 발생 시 기존 객체를 논리적 삭제 또는 아카이빙하고 신규 타임스탬프를 획득한 새 객체로 대체함. (Mapping: KOMARC 연동 시 YYYYMMDD로 다운캐스팅되어 552 ▾k 서브필드에 개시일자로 맵핑됨)
-     */
-    dateCreated?: string;
-    /**
-     * 파생 문서가 타겟팅하는 코어 서지 엔티티 배열. 단권, 다권본 세트, 동일 저작물의 이기종 판본(개정판, e-book 등 여러 ISBN)을 무제한으로 바인딩할 수 있음. 단일 도서 타겟팅 시에도 반드시 원소 1개짜리 배열로 인입되어야 함.
-     *
-     * @minItems 1
-     */
-    about?: [
-        {
-            "@type": "Book";
-            /**
-             * 국제표준도서번호 식별자.
-             */
-            isbn: string;
-            [k: string]: unknown;
-        },
-        ...{
-            "@type": "Book";
-            /**
-             * 국제표준도서번호 식별자.
-             */
-            isbn: string;
-            [k: string]: unknown;
-        }[]
-    ];
-    /**
-     * 범용 문서 텍스트. 최상단 YAML Frontmatter 캡슐화 필수. 데이터 인입 시 프론트매터 내부의 임의의 키(Arbitrary Keys) 확장은 전면 허용됨. 단, API 반환 및 영속화 객체 표출 시 파이프라인은 반드시 데이터를 정규화하여 1급 필드인 `title`(string), `byline`(string[]), `keywords`(string[]), `image`(string[]), `source_url`(string[])만을 최상위 노드에 직렬화하고, 기타 모든 잔여 동적 데이터는 `others: [{key: value}, ...]` 형태의 배열 객체로 강제 묶음 처리하여 마크다운을 재조립해야 함. (Mapping Protocol: 본 데이터 세트의 규격 출처는 KOMARC 552 ▾h 부호세트 이름/출처에 `https://schema.slat.or.kr/bro/v1/schema.json` 식별자로 명시되어야 하며, text 페이로드 원문은 552 ▾u의 URI 식별자를 통해 외부 해소되어야 함) @format markdown @ai-hint Frontmatter 파싱은 정규식 ^---\n([\s\S]*?)\n--- 를 사용하되, 역직렬화 반환 시 `title`, `byline`, `keywords`, `image`, `source_url` 및 잔여 K-V 튜플을 포함하는 `others` 노드만을 포함하도록 재구성할 것.
-     */
-    text?: string;
-    abstract?: AbstractDefinition;
-    /**
-     * 본문 데이터 생성 주체 배열. 복수 인원 공동 집필 및 복합 모델 관여 이력 추적용.
-     *
-     * @minItems 1
-     */
-    author?: [AuthorDefinitions, ...AuthorDefinitions[]];
-    [k: string]: unknown;
-}
-/**
- * 문서의 구조화된 요약 데이터 (기계 또는 사람이 작성)
- */
-interface AbstractDefinition {
-    "@type": "CreativeWork";
-    /**
-     * 원본 데이터의 UUID와 생성 시간을 기반으로 한 결정론적 UUID. 본 객체는 불변(Immutable)하며 갱신 시 새로운 UUID가 발급되어야 함.
-     */
-    "@id": string;
-    /**
-     * 요약 객체의 최초 생성 타임스탬프 (ISO 8601 / RFC 3339 준수). 불변성 원칙에 따라 데이터 수정 시 updated 필드를 사용하지 않고 신규 객체와 새로운 dateCreated를 발급하여 멱등성을 보장함. (Mapping: KOMARC 매핑시 YYYYMMDD 포맷으로 문자열 절삭 처리되어 KOMARC 552 ▾k 속성 값의 개시일자/종료일자에 바인딩됨)
-     */
-    dateCreated: string;
-    /**
-     * LLM 또는 사람이 작성한 리뷰, 분석, 비평 등 파생 데이터에 대한 정형화된 상세 요약 본문. (Mapping: KOMARC 552 ▾o 개체/속성 개요 서브필드에 직접 주입됨)
-     */
-    text: string;
-    /**
-     * 요약 데이터 생성 주체 배열. 기계(LLM)와 인간 작업자의 공동 작업 등 복수 주체 명시.
-     *
-     * @minItems 1
-     */
-    author: [AuthorDefinitions, ...AuthorDefinitions[]];
-    [k: string]: unknown;
-}
-/**
- * 도서 관련 글 목록 (ItemList - 다중 배열 매트릭스)
- */
-interface ItemListDefinition {
-    "@context": "https://schema.org";
-    "@type": "ItemList";
-    "@id"?: string;
+declare function normalizeUrnScheme(value: string): string;
+declare function normalizePayload<T>(payload: T): T;
+declare function cloneAndNormalizePayload<T>(payload: T): T;
+
+declare const BRO_CONTEXT_IRI$1: "https://schema.slat.or.kr/bro/v1.0/context.jsonld";
+type BroContext = typeof BRO_CONTEXT_IRI$1 | readonly [typeof BRO_CONTEXT_IRI$1, ...Array<string | Record<string, unknown>>];
+type EntityIri = `urn:uuid:${string}` | `https://${string}`;
+type WebIri = `http://${string}` | `https://${string}`;
+type AgentIri = EntityIri | `mailto:${string}`;
+type Rfc3339DateTime = string;
+type Rfc3339Date = string;
+type BibliographicDate = Rfc3339DateTime | Rfc3339Date | string;
+type LanguageTag = string;
+type TextFormat = string;
+type BoundedJsonValue = string | number | boolean | null | readonly unknown[] | Record<string, unknown>;
+type ReactionType = "Response" | "Listing" | "Unspecified";
+type BroEntityType = "Reaction" | "ReactionAbstract" | "ReactionList";
+type BibliographicLevel = "Work" | "Edition" | "Item" | "Unspecified";
+type WorkType = "CreativeWork" | "Book" | "Article" | "ScholarlyArticle" | "WebPage" | "Chapter" | "Periodical" | "Collection" | "Dataset" | "Report" | (string & {});
+interface IdentifierPropertyValue {
+    readonly "@type": "PropertyValue";
     name?: string;
-    /**
-     * 도서 목록 작성/생성 주체 배열. 다수 주체(공동 저자, 다중 시스템) 바인딩 지원.
-     *
-     * @minItems 1
-     */
-    author: [AuthorDefinitions, ...AuthorDefinitions[]];
-    /**
-     * 도서 목록의 각 항목. 모든 항목은 Article로 규격화되며, 순수한 도서 추가의 경우 text가 빈 문자열인 Article로 취급됩니다.
-     *
-     * @minItems 0
-     */
-    itemListElement: ArticleIngestionPayload1[];
-    [k: string]: unknown;
+    propertyID?: string;
+    value: string | number;
+    valueReference?: string;
+}
+type IdentifierValue = string | IdentifierPropertyValue;
+type IdentifierSet = IdentifierValue | readonly [IdentifierValue, ...IdentifierValue[]];
+interface PropertyValue {
+    readonly "@type": "PropertyValue";
+    name: string;
+    propertyID?: string;
+    value: BoundedJsonValue;
+    valueReference?: string;
+    unitCode?: string;
+    unitText?: string;
+}
+type AdditionalPropertyArray = PropertyValue[];
+interface WorkIdentityReference {
+    readonly "@type": "CreativeWork";
+    identifier?: IdentifierSet;
+    name?: string;
+    creatorName?: string | readonly [string, ...string[]];
+}
+interface WorkReference {
+    readonly "@type": WorkType;
+    identifier?: IdentifierSet;
+    name?: string;
+    creatorName?: string | readonly [string, ...string[]];
+    publisherName?: string;
+    datePublished?: BibliographicDate;
+    bookEdition?: string;
+    inLanguage?: readonly [LanguageTag, ...LanguageTag[]];
+    keywords?: string[];
+    image?: string[];
+    additionalProperty?: AdditionalPropertyArray;
+    bibliographicLevel?: BibliographicLevel;
+    url?: WebIri | readonly [WebIri, ...WebIri[]];
+    exampleOfWork?: WorkIdentityReference;
+}
+interface BroReference {
+    readonly "@id": EntityIri;
+    readonly "@type"?: "Reaction" | "ReactionAbstract";
+}
+interface ListEntityReference {
+    readonly "@id": EntityIri;
+    readonly "@type"?: "Reaction" | "ReactionAbstract";
+}
+interface BasedOnEntityReference {
+    readonly "@id": EntityIri;
+    readonly "@type"?: BroEntityType;
+}
+type TargetReference = WorkReference | BroReference;
+type ListElement = WorkReference | ListEntityReference;
+type BasedOnReference = WorkReference | BasedOnEntityReference;
+interface AgentPerson {
+    readonly "@type": "Person";
+    readonly "@id"?: AgentIri;
+    name: string;
+}
+interface AgentUnknown {
+    readonly "@type": "UnknownAgent";
+    name?: string;
+}
+interface AgentOrganization {
+    readonly "@type": "Organization";
+    readonly "@id"?: `urn:uuid:${string}` | WebIri;
+    name: string;
+}
+interface AgentSoftware {
+    readonly "@type": "SoftwareApplication";
+    readonly "@id": `https://${string}`;
+    name: string;
+    softwareVersion?: string;
+}
+type AgentInRole = AgentPerson | AgentUnknown | AgentOrganization | AgentSoftware;
+interface AgentRole {
+    readonly "@type": "Role";
+    roleName?: string;
+    startDate?: Rfc3339Date;
+    endDate?: Rfc3339Date;
+    agent: AgentInRole;
+}
+type Agent = AgentInRole | AgentRole;
+type CreatorRoot = Agent;
+interface BroBase {
+    readonly "@context": BroContext;
+    readonly "@id": EntityIri;
+    name?: string;
+    byline?: string;
+    creator: [Agent, ...Agent[]];
+    dateCreated: Rfc3339DateTime;
+    dateModified?: Rfc3339DateTime;
+    datePublished?: Rfc3339DateTime;
+    license?: `https://${string}`;
+    inLanguage?: [LanguageTag, ...LanguageTag[]];
+    keywords?: string[];
+    image?: string[];
+    citation?: string[];
+    additionalProperty?: AdditionalPropertyArray;
+    [extensionKey: `${Lowercase<string>}:${string}`]: unknown;
+}
+interface Reaction extends BroBase {
+    readonly "@type": "Reaction";
+    reactionType: ReactionType;
+    about: [TargetReference, ...TargetReference[]];
+    text: string;
+    textFormat?: TextFormat;
+}
+interface ReactionAbstract extends BroBase {
+    readonly "@type": "ReactionAbstract";
+    text: string;
+    textFormat?: TextFormat;
+    isBasedOn: [BasedOnReference, ...BasedOnReference[]];
+}
+interface ReactionList extends BroBase {
+    readonly "@type": "ReactionList";
+    itemListElement: ListElement[];
+}
+type BibliographicReactionObjectBROV10 = Reaction | ReactionAbstract | ReactionList;
+type BroPayload = BibliographicReactionObjectBROV10;
+type BroReaction = Reaction;
+type BroReactionAbstract = ReactionAbstract;
+type BroReactionList = ReactionList;
+/**
+ * Compatibility aliases for earlier public API names.
+ * New code should use Reaction, ReactionAbstract, ReactionList, and WorkReference.
+ */
+type ExternalReference = WorkReference;
+type ElementReference = ListEntityReference;
+type AgentGovernment = AgentOrganization;
+type AgentCorporation = AgentOrganization;
+type BroArticle = Reaction;
+type BroAbstract = ReactionAbstract;
+type BroItemList = ReactionList;
+interface BroValidationError {
+    location: string;
+    keyword?: string;
+    message: string;
+    error?: string;
+    instanceLocation?: string;
+}
+interface BroValidationResult<T = unknown> {
+    valid: boolean;
+    errors: BroValidationError[];
+    normalizedPayload?: T;
 }
 
-declare const StrictFrontmatterSchema: v.StrictObjectSchema<{
-    readonly title: v.StringSchema<"Title must be a strictly defined string.">;
-    readonly keywords: v.ArraySchema<v.StringSchema<"Keywords must be an array of strings.">, undefined>;
-    readonly byline: v.OptionalSchema<v.ArraySchema<v.StringSchema<"Byline must be an array of strings.">, undefined>, undefined>;
-    readonly image: v.OptionalSchema<v.ArraySchema<v.StringSchema<"Image must be an array of strings.">, undefined>, undefined>;
-    readonly source_url: v.OptionalSchema<v.ArraySchema<v.StringSchema<"Source URL must be an array of strings.">, undefined>, undefined>;
-}, undefined>;
-declare const DynamicFieldSchema: v.RecordSchema<v.StringSchema<undefined>, v.AnySchema, undefined>;
-type StrictFrontmatter = v.InferOutput<typeof StrictFrontmatterSchema>;
-type DynamicField = v.InferOutput<typeof DynamicFieldSchema>;
+declare const BRO_CONTEXT_IRI: "https://schema.slat.or.kr/bro/v1.0/context.jsonld";
+declare const BRO_SCHEMA_IRI: "https://schema.slat.or.kr/bro/v1.0/schema.json";
+declare const BRO_VOCAB_IRI: "https://schema.slat.or.kr/bro/v1.0/vocab#";
+declare const REACTION_TYPES: readonly ["Response", "Listing", "Unspecified"];
+declare const AGENT_TYPES: readonly ["Person", "UnknownAgent", "Organization", "SoftwareApplication", "Role"];
+type AgentType = (typeof AGENT_TYPES)[number];
+type CreatorType = AgentType;
+type Creator = Agent;
+type CreatorPerson = AgentPerson;
+type CreatorUnknown = AgentUnknown;
+type CreatorAnonymous = AgentUnknown;
+type CreatorGovernment = AgentGovernment;
+type CreatorCorporation = AgentCorporation;
+type CreatorOrganization = AgentOrganization;
+type CreatorSoftware = AgentSoftware;
+type CreatorRole = AgentRole;
 
-/**
- * Validates data against the Book Article List Ontology (BRO) schema.
- */
-declare function validateBroSchema(data: unknown): {
-    valid: boolean;
-    errors: _cfworker_json_schema.OutputUnit[];
-};
+interface ValidateBroOptions {
+    normalize?: boolean;
+    mutate?: boolean;
+    includeNormalizedPayload?: boolean;
+}
+declare function validateBroSchema<T = BibliographicReactionObjectBROV10>(data: unknown, options?: ValidateBroOptions): BroValidationResult<T>;
+declare function assertBroSchema(data: unknown, options?: ValidateBroOptions): asserts data is BibliographicReactionObjectBROV10;
 
-/**
- * Executes rigorous Valibot pipeline validation to intercept anomalous data injections.
- * Bypasses the overhead of Zod's deep cloning mechanisms, performing direct memory inspection.
- */
-declare function validateStrictFrontmatter(payload: unknown): StrictFrontmatter;
-/**
- * Validates the topological integrity of the extracted dynamic fields matrix.
- */
-declare function validateOthersBundle(payload: unknown): DynamicField[];
-
-export { type AbstractDefinition, type ArticleBaseProperties, type ArticleIngestionPayload, type ArticleIngestionPayload1, type ArticlePersistedEntity, type AuthorDefinitions, type BibliographicReactionObjectBRO, type ItemListDefinition, broV1Schema, validateBroSchema, validateOthersBundle, validateStrictFrontmatter };
+export { AGENT_TYPES, type AdditionalPropertyArray, type Agent, type AgentCorporation, type AgentGovernment, type AgentInRole, type AgentIri, type AgentOrganization, type AgentPerson, type AgentRole, type AgentSoftware, type AgentType, type AgentUnknown, BRO_CONTEXT_IRI, BRO_SCHEMA_IRI, BRO_VOCAB_IRI, type BasedOnEntityReference, type BasedOnReference, type BibliographicDate, type BibliographicLevel, type BibliographicReactionObjectBROV10, type BoundedJsonValue, type BroAbstract, type BroArticle, type BroBase, type BroContext, type BroEntityType, type BroItemList, type BroPayload, type BroReaction, type BroReactionAbstract, type BroReactionList, type BroReference, type BroValidationError, type BroValidationResult, AGENT_TYPES as CREATOR_TYPES, type Creator, type CreatorAnonymous, type CreatorCorporation, type CreatorGovernment, type CreatorOrganization, type CreatorPerson, type CreatorRole, type CreatorRoot, type CreatorSoftware, type CreatorType, type CreatorUnknown, type ElementReference, type EntityIri, type ExternalReference, type IdentifierPropertyValue, type IdentifierSet, type IdentifierValue, type LanguageTag, type ListElement, type ListEntityReference, type PropertyValue, REACTION_TYPES, type Reaction, type ReactionAbstract, type ReactionList, type ReactionType, type Rfc3339Date, type Rfc3339DateTime, type TargetReference, type TextFormat, type ValidateBroOptions, type WebIri, type WorkIdentityReference, type WorkReference, type WorkType, assertBroSchema, broV1Schema, cloneAndNormalizePayload, normalizePayload, normalizeUrnScheme, validateBroSchema };

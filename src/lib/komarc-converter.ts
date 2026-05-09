@@ -1,9 +1,14 @@
 import type {
+  BasedOnReference,
   BibliographicReactionObjectBROV10,
-  ExternalReference,
+  EntityIri,
+  IdentifierValue,
+  ListElement,
   Reaction,
   ReactionAbstract,
   ReactionList,
+  TargetReference,
+  WorkReference,
 } from "../validator/schema-types";
 
 export interface KomarcSubfield {
@@ -34,13 +39,32 @@ function yyyymmdd(dateTime: string): string {
   return dateTime.slice(0, 10).replace(/-/g, "");
 }
 
-function identifierField(reference: ExternalReference): KomarcDataField {
-  if (reference.identifier.startsWith("urn:isbn:")) {
+function isEntityReference(
+  reference: TargetReference | BasedOnReference | ListElement,
+): reference is { readonly "@id": EntityIri; readonly "@type"?: string } {
+  return "@id" in reference;
+}
+
+function identifierLabel(identifier: IdentifierValue): string {
+  if (typeof identifier === "string") return identifier;
+  const authority = identifier.propertyID ?? identifier.name ?? "PropertyValue";
+  return `${authority}:${String(identifier.value)}`;
+}
+
+function identifierValues(reference: WorkReference): string[] {
+  const identifier = reference.identifier;
+  if (!identifier) return [];
+  if (Array.isArray(identifier)) return (identifier as readonly IdentifierValue[]).map(identifierLabel);
+  return [identifierLabel(identifier as IdentifierValue)];
+}
+
+function identifierField(identifier: string): KomarcDataField {
+  if (identifier.startsWith("urn:isbn:")) {
     return {
       tag: "020",
       indicator1: " ",
       indicator2: " ",
-      subfields: [{ code: "a", value: reference.identifier.replace(/^urn:isbn:/, "") }],
+      subfields: [{ code: "a", value: identifier.replace(/^urn:isbn:/, "") }],
     };
   }
 
@@ -48,8 +72,35 @@ function identifierField(reference: ExternalReference): KomarcDataField {
     tag: "024",
     indicator1: "8",
     indicator2: " ",
-    subfields: [{ code: "a", value: reference.identifier }],
+    subfields: [{ code: "a", value: identifier }],
   };
+}
+
+function titleField(reference: WorkReference): KomarcDataField | null {
+  if (!reference.name) return null;
+  const subfields: KomarcSubfield[] = [{ code: "a", value: reference.name }];
+  if (reference.creatorName) {
+    const creators = Array.isArray(reference.creatorName) ? reference.creatorName : [reference.creatorName];
+    for (const creator of creators) subfields.push({ code: "c", value: creator });
+  }
+  if (reference.publisherName) subfields.push({ code: "b", value: reference.publisherName });
+  if (reference.datePublished) subfields.push({ code: "d", value: reference.datePublished });
+
+  return {
+    tag: "245",
+    indicator1: "0",
+    indicator2: "0",
+    subfields,
+  };
+}
+
+function referenceFields(reference: TargetReference | BasedOnReference | ListElement): KomarcDataField[] {
+  if (isEntityReference(reference)) return [identifierField(reference["@id"])];
+
+  const fields = identifierValues(reference).map(identifierField);
+  const title = titleField(reference);
+  if (title) fields.push(title);
+  return fields;
 }
 
 function base552(payload: BibliographicReactionObjectBROV10): KomarcSubfield[] {
@@ -97,7 +148,7 @@ function convertReactionToKomarc(reaction: Reaction): KomarcRecord {
   return {
     controlFields: [],
     dataFields: [
-      ...reaction.about.map(identifierField),
+      ...reaction.about.flatMap(referenceFields),
       text520ForReaction(reaction),
       {
         tag: "552",
@@ -116,7 +167,7 @@ function convertAbstractToKomarc(abstractPayload: ReactionAbstract): KomarcRecor
   return {
     controlFields: [],
     dataFields: [
-      ...abstractPayload.isBasedOn.map(identifierField),
+      ...abstractPayload.isBasedOn.flatMap(referenceFields),
       text520ForAbstract(abstractPayload),
       {
         tag: "552",
@@ -145,21 +196,34 @@ function convertListToKomarc(list: ReactionList): KomarcRecord[] {
     ];
   }
 
-  return list.itemListElement.map((element) => ({
-    controlFields: [],
-    dataFields: [
-      {
-        tag: "552",
-        indicator1: " ",
-        indicator2: " ",
-        subfields: [
-          ...base552(list),
+  return list.itemListElement.map((element) => {
+    const referenceSubfields: KomarcSubfield[] = isEntityReference(element)
+      ? [
           { code: "u", value: element["@id"] },
           ...(element["@type"] ? [{ code: "t", value: element["@type"] }] : []),
-        ],
-      },
-    ],
-  }));
+        ]
+      : [
+          ...(element.name ? [{ code: "b", value: element.name }] : []),
+          { code: "t", value: element["@type"] },
+          ...identifierValues(element).map((identifier) => ({ code: "u", value: identifier })),
+        ];
+
+    return {
+      controlFields: [],
+      dataFields: [
+        ...referenceFields(element),
+        {
+          tag: "552",
+          indicator1: " ",
+          indicator2: " ",
+          subfields: [
+            ...base552(list),
+            ...referenceSubfields,
+          ],
+        },
+      ],
+    };
+  });
 }
 
 export function convertBroToKomarc(payload: BibliographicReactionObjectBROV10): KomarcRecord | KomarcRecord[] {

@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { Validator, type Schema } from "@cfworker/json-schema";
+import broExamples from "./assets/bro-v1-examples.json";
 import broSchema from "./assets/bro-v1-schema.json";
 import { broV1Context } from "../src/lib/bro-context";
 import { broV1VocabTurtle } from "../src/lib/bro-vocab";
@@ -39,6 +40,12 @@ function vocabResponse(c: Context) {
   return c.body(broV1VocabTurtle);
 }
 
+function examplesResponse(c: Context) {
+  c.header("Content-Type", "application/json; charset=utf-8");
+  c.header("Cache-Control", VERSIONED_CACHE);
+  return c.body(JSON.stringify(broExamples, null, 2));
+}
+
 function hasForbiddenFrontMatter(text: string): boolean {
   const withoutBom = text.replace(/^\uFEFF/, "");
   return /^(---|\+\+\+)\s*(?:\r?\n|$)/.test(withoutBom);
@@ -65,6 +72,7 @@ app.get("/", (c) =>
     schema: "https://schema.slat.or.kr/bro/v1.0/schema.json",
     context: "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
     vocab: "https://schema.slat.or.kr/bro/v1.0/vocab#",
+    examples: "https://schema.slat.or.kr/bro/v1.0/examples.json",
   }),
 );
 
@@ -76,6 +84,8 @@ app.get("/bro/v1.0/vocab", vocabResponse);
 app.get("/bro/v1.0/vocab.ttl", vocabResponse);
 app.get("/bro/v1/vocab", vocabResponse);
 app.get("/bro/v1/vocab.ttl", vocabResponse);
+app.get("/bro/v1.0/examples.json", examplesResponse);
+app.get("/bro/v1/examples.json", examplesResponse);
 
 async function validateRequest(c: Context) {
   const requestStartTime = Date.now();

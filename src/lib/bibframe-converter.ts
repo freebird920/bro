@@ -1,7 +1,12 @@
 import type {
   Agent,
+  BasedOnReference,
   BibliographicReactionObjectBROV10,
-  ExternalReference,
+  EntityIri,
+  IdentifierValue,
+  ListElement,
+  TargetReference,
+  WorkReference,
 } from "../validator/schema-types";
 
 export interface BibframeContribution {
@@ -24,8 +29,9 @@ export interface BibframeIdentifier {
 
 export interface BibframeInstance {
   "@type": "bf:Instance";
-  "bf:identifiedBy": BibframeIdentifier;
+  "bf:identifiedBy"?: BibframeIdentifier | BibframeIdentifier[];
   "bf:instanceOf"?: { "@id": string; "@type": string };
+  "rdfs:label"?: string;
 }
 
 export interface BibframeNote {
@@ -66,8 +72,6 @@ function agentType(agent: Agent): string {
     case "Person":
     case "UnknownAgent":
       return "bf:Person";
-    case "GovernmentOrganization":
-    case "Corporation":
     case "Organization":
       return "bf:Organization";
     case "SoftwareApplication":
@@ -104,17 +108,75 @@ function contributionFromAgent(agent: Agent): BibframeContribution {
   return contribution;
 }
 
-function instanceFromReference(reference: ExternalReference): BibframeInstance {
-  return {
+function isEntityReference(
+  reference: TargetReference | BasedOnReference | ListElement,
+): reference is { readonly "@id": EntityIri; readonly "@type"?: string } {
+  return "@id" in reference;
+}
+
+function identifierLabel(identifier: IdentifierValue): string {
+  if (typeof identifier === "string") return identifier;
+  const authority = identifier.propertyID ?? identifier.name ?? "PropertyValue";
+  return `${authority}:${String(identifier.value)}`;
+}
+
+function identifierValues(reference: WorkReference): string[] {
+  const identifier = reference.identifier;
+  if (!identifier) return [];
+  if (Array.isArray(identifier)) return (identifier as readonly IdentifierValue[]).map(identifierLabel);
+  return [identifierLabel(identifier as IdentifierValue)];
+}
+
+function instanceFromWorkReference(reference: WorkReference): BibframeInstance {
+  const identifiers = identifierValues(reference);
+  const instance: BibframeInstance = {
     "@type": "bf:Instance",
-    "bf:identifiedBy": {
-      "@type": "bf:Identifier",
-      "rdf:value": reference.identifier,
-    },
-    "bf:instanceOf": {
-      "@id": reference.identifier,
+    ...(reference.name ? { "rdfs:label": reference.name } : {}),
+    ...(identifiers.length > 0
+      ? {
+          "bf:identifiedBy": identifiers.map((identifier) => ({
+            "@type": "bf:Identifier" as const,
+            "rdf:value": identifier,
+          })),
+        }
+      : {}),
+  };
+
+  if (identifiers[0]) {
+    instance["bf:instanceOf"] = {
+      "@id": identifiers[0],
       "@type": `schema:${reference["@type"]}`,
-    },
+    };
+  }
+
+  return instance;
+}
+
+function instanceFromReference(reference: TargetReference | BasedOnReference | ListElement): BibframeInstance {
+  if (isEntityReference(reference)) {
+    return {
+      "@type": "bf:Instance",
+      "bf:instanceOf": {
+        "@id": reference["@id"],
+        "@type": reference["@type"] ? `bro:${reference["@type"]}` : "bf:Work",
+      },
+    };
+  }
+
+  return instanceFromWorkReference(reference);
+}
+
+function itemNodeFromReference(reference: ListElement) {
+  if (isEntityReference(reference)) {
+    return {
+      "@id": reference["@id"],
+      "@type": reference["@type"] ? `bro:${reference["@type"]}` : "bf:Work",
+    };
+  }
+
+  return {
+    ...instanceFromWorkReference(reference),
+    "@type": "bf:Instance" as const,
   };
 }
 
@@ -170,9 +232,6 @@ export function convertBroToBibframe(payload: BibliographicReactionObjectBROV10)
   return {
     ...base,
     "@type": ["bf:Work", "bf:Collection", "bro:ReactionList"],
-    "bf:hasItem": payload.itemListElement.map((element) => ({
-      "@id": element["@id"],
-      "@type": element["@type"] ? `bro:${element["@type"]}` : "bf:Work",
-    })),
+    "bf:hasItem": payload.itemListElement.map(itemNodeFromReference),
   };
 }

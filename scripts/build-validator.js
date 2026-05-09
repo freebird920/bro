@@ -24,6 +24,7 @@ async function build() {
   console.log("3. Copying versioned schema/context assets...");
   fs.copyFileSync(schemaPath, path.join(distDir, "bro-v1-schema.json"));
   fs.copyFileSync(path.resolve("worker/assets/bro-v1-context.jsonld"), path.join(distDir, "bro-v1-context.jsonld"));
+  fs.copyFileSync(path.resolve("worker/assets/bro-v1-examples.json"), path.join(distDir, "bro-v1-examples.json"));
 
   console.log("4. Generating package.json for validator publish...");
   const rootPackageJson = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
@@ -42,6 +43,7 @@ async function build() {
       },
       "./schema": "./bro-v1-schema.json",
       "./context": "./bro-v1-context.jsonld",
+      "./examples": "./bro-v1-examples.json",
     },
     dependencies: {
       "@cfworker/json-schema": cfworkerVersion,

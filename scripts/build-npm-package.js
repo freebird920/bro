@@ -21,6 +21,8 @@ async function buildNpmPackage() {
       ["worker/assets/bro-v1-schema.json", "bro-v1-schema.json"],
       ["worker/assets/bro-v1-context.jsonld", "bro-v1-context.jsonld"],
       ["worker/assets/bro-v1-vocab.ttl", "bro-v1-vocab.ttl"],
+      ["worker/assets/bro-v1-examples.json", "bro-v1-examples.json"],
+      ["QUICKSTART.md", "QUICKSTART.md"],
       ["README.md", "README.md"],
       ["LICENSE", "LICENSE"],
     ];
@@ -62,6 +64,8 @@ async function buildNpmPackage() {
         "./schema": "./bro-v1-schema.json",
         "./context": "./bro-v1-context.jsonld",
         "./vocab": "./bro-v1-vocab.ttl",
+        "./examples": "./bro-v1-examples.json",
+        "./quickstart": "./QUICKSTART.md",
       },
       dependencies,
       peerDependencies: {},

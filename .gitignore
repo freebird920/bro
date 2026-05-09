@@ -33,3 +33,6 @@ dist-ssr
 
 gemini_output*
 MEMO.md
+
+.update/**
+src/validator/schema-types.generated.ts

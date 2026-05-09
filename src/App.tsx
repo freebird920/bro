@@ -23,95 +23,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import broExamples from "../worker/assets/bro-v1-examples.json";
 import readmeMarkdown from "../README.md?raw";
 import { validateBroSchema } from "./validator";
 import type { BibliographicReactionObjectBROV10, BroValidationError } from "./validator/schema-types";
 import "./lib/githubmarkdown.css";
 
-const EXAMPLES: Record<string, BibliographicReactionObjectBROV10> = {
-  RESPONSE_REACTION: {
-    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
-    "@type": "Reaction",
-    "@id": "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7",
-    reactionType: "Response",
-    name: "Rereading 1984",
-    about: [{ "@type": "Book", identifier: "urn:isbn:9780451524935" }],
-    text: "I finished reading 1984 today. The final scene was memorable.",
-    textFormat: "text/plain",
-    creator: [{ "@type": "Person", name: "Reader Kim" }],
-    dateCreated: "2026-04-15T22:30:00+09:00",
-    license: "https://creativecommons.org/licenses/by/4.0/",
-    inLanguage: ["ko"],
-    keywords: ["dystopia", "totalitarianism"],
-    additionalProperty: [{ "@type": "PropertyValue", name: "lib:rating", value: 5 }],
-  },
-  LISTING_REACTION: {
-    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
-    "@type": "Reaction",
-    "@id": "https://library.example.kr/reactions/2026/r-9182",
-    reactionType: "Listing",
-    name: "Librarian Recommendations for April 2026",
-    about: [{ "@type": "Book", identifier: "urn:isbn:9780451524935" }],
-    text: "",
-    creator: [
-      {
-        "@type": "Organization",
-        name: "National Library",
-        "@id": "https://www.nl.go.kr/",
-      },
-    ],
-    byline: "Librarian Curation Desk",
-    dateCreated: "2026-04-15T10:00:00+09:00",
-    inLanguage: ["ko"],
-    additionalProperty: [
-      {
-        "@type": "PropertyValue",
-        name: "nlk:recommendationProgram",
-        value: "Librarian Recommendations for April 2026",
-      },
-    ],
-  },
-  REACTION_ABSTRACT: {
-    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
-    "@type": "ReactionAbstract",
-    "@id": "urn:uuid:f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    name: "Summary of a 1984 Reaction",
-    text: "This abstract summarizes the reaction with emphasis on the political implications of Newspeak.",
-    creator: [
-      {
-        "@type": "SoftwareApplication",
-        name: "BRO Summarizer",
-        softwareVersion: "1.2.0",
-        "@id": "https://schema.slat.or.kr/agents/bro-summarizer",
-      },
-    ],
-    dateCreated: "2026-04-15T22:35:00+09:00",
-    isBasedOn: [{ "@type": "Reaction", identifier: "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7" }],
-    inLanguage: ["ko"],
-  },
-  REACTION_LIST: {
-    "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
-    "@type": "ReactionList",
-    "@id": "https://library.example.kr/lists/2026-q1-dystopia",
-    name: "Dystopia Collection Q1 2026",
-    creator: [
-      {
-        "@type": "Organization",
-        name: "National Library Recommendation Committee",
-        "@id": "https://www.nl.go.kr/",
-      },
-    ],
-    itemListElement: [
-      { "@id": "urn:uuid:7c9e6679-7425-40de-944b-e07fc1f90ae7", "@type": "Reaction" },
-      { "@id": "urn:uuid:f47ac10b-58cc-4372-a567-0e02b2c3d479", "@type": "ReactionAbstract" },
-    ],
-    dateCreated: "2026-03-31T18:00:00+09:00",
-    inLanguage: ["ko"],
-    keywords: ["dystopia", "curation"],
-  },
-};
+const EXAMPLES = Object.fromEntries(
+  (broExamples as BibliographicReactionObjectBROV10[]).map((example, index) => [
+    `${String(index + 1).padStart(2, "0")}_${example["@type"]}`,
+    example,
+  ]),
+) as Record<string, BibliographicReactionObjectBROV10>;
 
-const DEFAULT_EXAMPLE_KEY = "RESPONSE_REACTION";
+const DEFAULT_EXAMPLE_KEY = Object.keys(EXAMPLES)[0];
 
 export default function App() {
   const [jsonInput, setJsonInput] = useState(() => JSON.stringify(EXAMPLES[DEFAULT_EXAMPLE_KEY], null, 2));
