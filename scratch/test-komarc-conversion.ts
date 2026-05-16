@@ -1,79 +1,70 @@
-import { convertBroToKomarc } from '../src/lib/komarc-converter';
-import type { BibliographicReactionObjectBRO } from '../src/validator/schema-types';
+import { convertBroToKomarc, type KomarcDataField, type KomarcRecord } from "../src/lib/komarc-converter";
+import type { BibliographicReactionObjectBROV10 } from "../src/validator/schema-types";
 
-console.log('--- Initiating KOMARC Conversion Empirical Validation ---');
+console.log("--- Initiating KOMARC Conversion Validation ---");
 
-const mockPayload: BibliographicReactionObjectBRO = {
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "dateCreated": "2024-04-11T12:34:56Z",
-  "about": [{
-    "@type": "CreativeWork",
-    "identifier": "urn:isbn:978-89-01-23456-7"
-  }] as any,
-  "creator": [{
-    "@type": "Person",
-    "name": "Antigravity Gemini",
-    "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000"
-  }],
-  "abstract": [
-    { "@id": "urn:uuid:660e8400-e29b-41d4-a716-446655441111" }
+function findDataField(record: KomarcRecord, tag: string): KomarcDataField | undefined {
+  return record.dataFields.find((field) => field.tag === tag);
+}
+
+function hasSubfield(field: KomarcDataField | undefined, code: string, value: string): boolean {
+  return Boolean(field?.subfields.some((subfield) => subfield.code === code && subfield.value === value));
+}
+
+function assert(condition: boolean, message: string, detail?: unknown) {
+  if (!condition) {
+    console.error(`FAIL ${message}`, detail ?? "");
+    process.exit(1);
+  }
+  console.log(`PASS ${message}`);
+}
+
+const context = "https://schema.slat.or.kr/bro/v1.0/context.jsonld" as const;
+const creator = [{ "@type": "Library", name: "예시공공도서관", "@id": "https://library.example.kr/" }] as const;
+
+const reactionPayload: BibliographicReactionObjectBROV10 = {
+  "@context": context,
+  "@type": "Reaction",
+  "@id": "urn:uuid:018f1b2c-0000-7000-8000-000000000101",
+  reactionType: "Listing",
+  dateCreated: "2026-05-09T00:00:00+09:00",
+  about: [
+    {
+      "@type": "Book",
+      identifier: "urn:isbn:9788937462788",
+      name: "1984",
+      creatorName: "George Orwell",
+    },
   ],
-  "text": "Full markdown text here..."
+  creator: [...creator],
+  text: "",
 };
 
-console.log('Testing Single Article Conversion...');
-const record = convertBroToKomarc(mockPayload) as any;
+console.log("\nTesting Reaction conversion...");
+const record = convertBroToKomarc(reactionPayload) as KomarcRecord;
+const field020 = findDataField(record, "020");
+const field552 = findDataField(record, "552");
 
-// 1. Assert ISBN 020 ▾a
-const field020 = record.dataFields.find((f: any) => f.tag === '020');
-if (field020?.subfields.find((s: any) => s.code === 'a' && s.value === '978-89-01-23456-7')) {
-  console.log('✅ ISBN 020 ▾a: Match');
-} else {
-  console.error('❌ ISBN 020 ▾a: Failed', field020);
-}
+assert(hasSubfield(field020, "a", "9788937462788"), "ISBN maps to 020 $a", field020);
+assert(hasSubfield(field552, "k", "20260509"), "dateCreated maps to 552 $k", field552);
+assert(hasSubfield(field552, "h", "https://schema.slat.or.kr/bro/v1.0/schema.json"), "schema URI maps to 552 $h", field552);
+assert(hasSubfield(field552, "t", "Listing"), "reactionType maps to 552 $t", field552);
 
-  // 2. Authorship Mapping is intentionally ignored so no 100/700 checks here.
-
-// 3. Assert Date Truncation 552 ▾k
-const field552 = record.dataFields.find((f: any) => f.tag === '552');
-const subk = field552?.subfields.find((s: any) => s.code === 'k');
-if (subk?.value === '20240411') {
-  console.log('✅ Date 552 ▾k (20240411): Match');
-} else {
-  console.error('❌ Date 552 ▾k: Failed', subk);
-}
-
-// 4. Assert Schema Source 552 ▾h
-const subh = field552?.subfields.find((s: any) => s.code === 'h');
-if (subh?.value === 'https://schema.slat.or.kr/bro/v1/schema.json') {
-  console.log('✅ Source 552 ▾h: Match');
-} else {
-  console.error('❌ Source 552 ▾h: Failed', subh);
-}
-
-console.log('\nTesting ItemList Conversion (ID-only references)...');
-const listPayload: BibliographicReactionObjectBRO = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "creator": [{ "@type": "Organization", "name": "SLAT", "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000" }],
-    "itemListElement": [
-      { "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440001" },
-      { "@id": "urn:uuid:550e8400-e29b-41d4-a716-446655440002" }
-    ]
+console.log("\nTesting ReactionList conversion...");
+const listPayload: BibliographicReactionObjectBROV10 = {
+  "@context": context,
+  "@type": "ReactionList",
+  "@id": "urn:uuid:018f1b2c-0000-7000-8000-000000000100",
+  dateCreated: "2026-05-09T00:00:00+09:00",
+  creator: [...creator],
+  itemListElement: [{ "@id": reactionPayload["@id"], "@type": "Reaction" }],
 };
 
-const records = convertBroToKomarc(listPayload) as any[];
-if (Array.isArray(records) && records.length === 2) {
-    const first552 = records[0].dataFields.find((f: any) => f.tag === '552');
-    const firstU = first552?.subfields.find((s: any) => s.code === 'u');
-    if (firstU?.value === 'urn:uuid:550e8400-e29b-41d4-a716-446655440001') {
-        console.log('✅ ItemList @id reference → 552 ▾u: Match');
-    } else {
-        console.error('❌ ItemList 552 ▾u mapping: Failed', firstU);
-    }
-} else {
-    console.error('❌ ItemList conversion: Failed — expected 2 records, got', records?.length);
-}
+const records = convertBroToKomarc(listPayload) as KomarcRecord[];
+assert(Array.isArray(records) && records.length === 1, "ReactionList emits one record per item", records.length);
 
-console.log('\n--- Validation Sequence Complete ---');
+const list552 = findDataField(records[0], "552");
+assert(hasSubfield(list552, "u", reactionPayload["@id"]), "ReactionList item reference maps to 552 $u", list552);
+assert(hasSubfield(list552, "t", "Reaction"), "ReactionList item type maps to 552 $t", list552);
+
+console.log("\n--- Validation Sequence Complete ---");

@@ -1,55 +1,37 @@
-import { parseFrontmatter, serializeFrontmatter } from '../src/lib/frontmatter';
+import { renderBroToMarkdown } from "../src/lib/markdown-renderer";
+import { validateBroSchema } from "../src/validator";
+import type { BibliographicReactionObjectBROV10 } from "../src/validator/schema-types";
 
-// Test Framework Initialization 
 function assert(condition: boolean, message: string) {
   if (!condition) {
-    console.error(`❌ ASSERTION FAILED: ${message}`);
+    console.error(`FAIL ${message}`);
     process.exit(1);
   }
+  console.log(`PASS ${message}`);
 }
 
-console.log("Initiating Exhaustive Idempotency Validation Protocol... ✌️🤪✌️\n");
+const payload: BibliographicReactionObjectBROV10 = {
+  "@context": "https://schema.slat.or.kr/bro/v1.0/context.jsonld",
+  "@type": "Reaction",
+  "@id": "urn:uuid:018f1b2c-0000-7000-8000-000000000104",
+  reactionType: "Response",
+  name: "서평: 1984",
+  about: [{ "@type": "Book", name: "1984", identifier: "urn:isbn:9788937462788" }],
+  text: "감시와 언어 통제의 문제를 다룬 서평 본문.",
+  creator: [{ "@type": "Person", name: "테스터", "@id": "mailto:tester@example.org" }],
+  dateCreated: "2026-05-09T00:00:00+09:00",
+};
 
-const inputYaml = `
-title: "Strict Deserialization Protocols"
-language: ["ko"]
-keywords: ["valibot", "idempotency", "string-mutation"]
-date: "2026-04-11"
-author: "System"
-toc: true
-`;
+console.log("Testing BRO markdown rendering and front-matter rejection.");
 
-const inputContent = `# Main Header\nThis is the payload body.`;
+const markdown = renderBroToMarkdown(payload);
+assert(markdown.startsWith("---\n"), "renderer emits metadata front matter");
+assert(markdown.endsWith(payload.text), "renderer appends Reaction.text as body");
 
-// TEST 1: Parsing and Segregation Protocol
-console.log("Executing Test 1: Mixed Key Parsing");
-const parseResult = parseFrontmatter(inputYaml, inputContent);
+const invalidPayload = {
+  ...payload,
+  text: "---\ntitle: legacy front matter\n---\n본문",
+};
 
-assert(parseResult.data.title === "Strict Deserialization Protocols", "Title extraction failed.");
-assert(parseResult.data.keywords.length === 3, "Keywords extraction failed.");
-assert(parseResult.others.length === 3, `Dynamic field segregation failed. Expected 3 fields, got ${parseResult.others.length}.`);
-assert(parseResult.others.some(field => field.date === "2026-04-11"), "Date field isolation failed.");
-console.log("✅ Test 1 Passed.\n");
-
-// TEST 2: Serialization and Matrix Reconstruction
-console.log("Executing Test 2: Serialization Formatting");
-const serializedData = serializeFrontmatter(parseResult.data, parseResult.others, parseResult.content);
-
-assert(serializedData.startsWith('---'), "YAML block start delimiter missing.");
-assert(serializedData.includes('title: Strict Deserialization Protocols'), "YAML block missing 1st-class data.");
-assert(serializedData.includes('others:'), "YAML block missing others array.");
-assert(serializedData.includes('date: "2026-04-11"') || serializedData.includes("date: '2026-04-11'") || serializedData.includes("date: 2026-04-11"), "Dynamic field missing in YAML others array.");
-console.log("✅ Test 2 Passed.\n");
-
-// TEST 3: Infinite Cycle Idempotency Validation
-console.log("Executing Test 3: Idempotency Cycle (Parse -> Serialize -> Parse)");
-// Note: We need to simulate how a real parser would split the serialized data
-const idempotencyResult = parseFrontmatter(serializedData);
-
-assert(idempotencyResult.others.length === 3, `Idempotency failure: Others array length mutated to ${idempotencyResult.others.length}. Expected 3. Ⅴ(◍´ᯅ \`◍)Ⅴ`);
-assert(!idempotencyResult.content.includes('others:'), "Body content should not contain YAML block.");
-
-const secondarySerialization = serializeFrontmatter(idempotencyResult.data, idempotencyResult.others, idempotencyResult.content);
-
-assert(serializedData === secondarySerialization, "Idempotency hash mismatch: Secondary serialization yielded mutated byte sequence.");
-console.log("✅ Test 3 Passed. Idempotency verified. System operational.");
+assert(validateBroSchema(payload).valid, "normal Response validates");
+assert(!validateBroSchema(invalidPayload).valid, "text beginning with YAML front matter is rejected");
